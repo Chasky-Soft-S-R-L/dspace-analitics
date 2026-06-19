@@ -250,6 +250,51 @@
       background: #f0fdf4;
     }
 
+    /* ── Búsqueda libre de Asesor (mismo estilo que #searchInput) ── */
+    .adv-search-free-wrap {
+      position: relative;
+      width: 100%;
+    }
+    .adv-search-free-icon {
+      position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+      color: #94a3b8; font-size: .9rem; pointer-events: none;
+      transition: color .22s;
+    }
+    .adv-search-free-wrap:focus-within .adv-search-free-icon { color: #22c55e; }
+    .adv-search-free-input {
+      border: 2px solid #e8edf4;
+      border-radius: 12px;
+      height: 40px;
+      padding: 11px 38px 11px 46px;
+      font-size: .81rem;
+      outline: none;
+      transition: all .22s cubic-bezier(.22,1,.36,1);
+      width: 100%;
+      background: #f8fafc;
+      color: #1e293b;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04), inset 0 1px 3px rgba(255,255,255,.9);
+    }
+    .adv-search-free-input::placeholder { color:#b0bec5; font-weight:400; letter-spacing:.01em; }
+    .adv-search-free-input:focus {
+      border-color: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34,197,94,.15), 0 4px 16px rgba(22,163,74,.12);
+      background: #fff;
+      animation: glowPulse 2s ease-in-out infinite;
+    }
+    .adv-search-free-input:hover:not(:focus) {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+    .adv-search-free-clear {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: #94a3b8; font-size: .8rem; padding: 4px 6px;
+      border-radius: 6px; transition: color .15s, background .15s;
+      display: none;
+    }
+    .adv-search-free-clear:hover { color: #dc2626; background: #fee2e2; }
+
     /* ── Botones principales ── */
     .btn-primary {
       background: linear-gradient(135deg, #166534 0%, #15803d 60%, #22c55e 100%);
@@ -490,6 +535,7 @@
     .view-toggle-wrap {
       display: inline-flex;
       border-radius: 11px;
+      height: 41px;
       border: 1.5px solid #d1d5db;
       overflow: hidden;
       box-shadow: 0 1px 4px rgba(0,0,0,.07);
@@ -1297,15 +1343,21 @@
         <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
           <i class="fa-solid fa-chalkboard-user mr-1 text-green-600"></i>Asesor
         </label>
-        <div class="adv-dropdown" id="advDropdownWrap">
-          <button type="button" class="adv-dropdown-btn" id="advDropdownBtn"
-            onclick="toggleAdvDropdown(event)">
-            <span class="adv-btn-label" id="advDropdownLabel">Todos los asesores</span>
-            <i class="fa-solid fa-chevron-down adv-btn-arrow"></i>
+        <div class="adv-search-free-wrap" id="advSearchFreeWrap">
+          <i class="fa-solid fa-magnifying-glass adv-search-free-icon"></i>
+          <input type="text" class="adv-search-free-input" id="autoresFilterAdvisor"
+            placeholder="Escribe apellido o nombre del asesor…"
+            oninput="onAdvSearchFreeInput(this.value)"
+            autocomplete="off" spellcheck="false" />
+          <button type="button" class="adv-search-free-clear" id="advSearchFreeClear"
+            onclick="clearAdvSearchFree()" title="Limpiar búsqueda">
+            <i class="fa-solid fa-xmark"></i>
           </button>
-          <!-- panel movido al body via JS -->
         </div>
-        <input type="hidden" id="autoresFilterAdvisor" value="" />
+        <!-- <div id="advSearchFreeHint" style="font-size:.72rem;color:#94a3b8;margin-top:4px;display:none;">
+          <i class="fa-solid fa-circle-info mr-1 text-green-500"></i>
+          Busca por coincidencia parcial · sin importar tildes
+        </div>  -->
       </div>
       <div class="flex-1 min-w-[160px]">
         <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
@@ -2837,6 +2889,7 @@ function truncate(str, n) {
 // ── populateDashFilters se llama desde populateFilters() original ─────────
 
 // ══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
 //  AUTORES — Lógica completa
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -2844,158 +2897,69 @@ let _autoresPage     = 1;
 const AUTORES_PER_PAGE = 20;
 let _autoresFiltered = [];
 
+// ── Normalización: elimina tildes/diacríticos para comparación insensible ──
+function normStr(str) {
+  return (str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 // ── Poblar selectores de filtros ─────────────────────────────────────────
 let _allAdvisors = [];
 
 function populateAutoresFilters() {
-  // DISTINCT robusto: normalizar espacios + deduplicar ignorando mayusculas
-  const seen = new Map();
-  validRecords.forEach(r => {
-    (r.advisors || '').split(';').forEach(raw => {
-      const name = raw.replace(/\s+/g, ' ').trim();
-      if (!name) return;
-      const key = name.toLowerCase();
-      if (!seen.has(key)) seen.set(key, name);
-    });
-  });
-  _allAdvisors = [...seen.values()].sort((a, b) => a.localeCompare(b, 'es'));
-  _advCurrentList = _allAdvisors.slice();
-
   const years = [...new Set(
     validRecords.map(r => (r.date || '').slice(0, 4)).filter(y => /^\d{4}$/.test(y))
   )].sort((a, b) => b - a);
 
-  const prevAdv = document.getElementById('autoresFilterAdvisor')?.value || '';
-  renderAdvOptions(_allAdvisors, prevAdv);
-
   const selYear = document.getElementById('autoresFilterYear');
-  if (!selYear) return;
-  const prevYear = selYear.value;
-  selYear.innerHTML = '<option value="">Todos los a\u00f1os</option>' +
-    years.map(y => `<option value="${y}"${prevYear === y ? ' selected' : ''}>${y}</option>`).join('');
-}
-
-let _advCurrentList = [];
-function renderAdvOptions(list, selected) {
-  const container = document.getElementById('advOptionsList');
-  if (!container) return;
-  _advCurrentList = list.slice();
-  const allOpt = `<div class="adv-option all-opt${!selected ? ' selected' : ''}"
-    data-value="" onclick="selectAdvOptionByIdx(-1)">Todos los asesores</div>`;
-  if (!list.length) {
-    container.innerHTML = allOpt + '<div class="adv-no-results"><i class="fa-solid fa-face-meh mr-1"></i>Sin resultados</div>';
-    return;
+  if (selYear) {
+    const prevYear = selYear.value;
+    selYear.innerHTML = '<option value="">Todos los a\u00f1os</option>' +
+      years.map(y => `<option value="${y}"${prevYear === y ? ' selected' : ''}>${y}</option>`).join('');
   }
-  container.innerHTML = allOpt + list.map((a, i) => {
-    const isSel = selected === a;
-    return `<div class="adv-option${isSel ? ' selected' : ''}" data-idx="${i}"
-      onclick="selectAdvOptionByIdx(${i})">${esc(a)}</div>`;
-  }).join('');
 }
 
-function filterAdvOptions(query) {
-  const q = (query || '').toLowerCase().trim();
-  const selected = document.getElementById('autoresFilterAdvisor')?.value || '';
-  _advCurrentList = q ? _allAdvisors.filter(a => a.toLowerCase().includes(q)) : _allAdvisors.slice();
-  renderAdvOptions(_advCurrentList, selected);
+// ── Búsqueda libre: input handler con debounce ───────────────────────────
+let _advSearchTimer = null;
+function onAdvSearchFreeInput(val) {
+  const clearBtn = document.getElementById('advSearchFreeClear');
+  const hint     = document.getElementById('advSearchFreeHint');
+  if (clearBtn) clearBtn.style.display = val.trim() ? 'block' : 'none';
+  if (hint)     hint.style.display     = val.trim() ? 'block' : 'none';
+  clearTimeout(_advSearchTimer);
+  _advSearchTimer = setTimeout(() => {
+    _autoresPage = 1;
+    renderAutoresView();
+  }, 280);
 }
 
-function selectAdvOptionByIdx(idx) {
-  const value = (idx >= 0 && _advCurrentList[idx] !== undefined) ? _advCurrentList[idx] : '';
-  const hidden = document.getElementById('autoresFilterAdvisor');
-  if (hidden) hidden.value = value;
-  const label = document.getElementById('advDropdownLabel');
-  if (label) label.textContent = value || 'Todos los asesores';
-  renderAdvOptions(_advCurrentList, value);
-  closeAdvDropdown();
+function clearAdvSearchFree() {
+  const inp      = document.getElementById('autoresFilterAdvisor');
+  const clearBtn = document.getElementById('advSearchFreeClear');
+  const hint     = document.getElementById('advSearchFreeHint');
+  if (inp)      inp.value = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  if (hint)     hint.style.display     = 'none';
+  _autoresPage = 1;
   renderAutoresView();
+  if (inp) inp.focus();
 }
-function selectAdvOption(el, value) { selectAdvOptionByIdx(-1); }
-
-function _positionAdvPanel() {
-  const panel = document.getElementById('advDropdownPanel');
-  const btn   = document.getElementById('advDropdownBtn');
-  if (!panel || !btn) return;
-  // Leer coordenadas del boton en el VIEWPORT (getBoundingClientRect es siempre relativo al viewport)
-  const rect   = btn.getBoundingClientRect();
-  const panelW = Math.max(rect.width, 280);
-  let topPos  = rect.bottom + 4;
-  let leftPos = rect.left;
-  if (leftPos + panelW > window.innerWidth - 8) leftPos = window.innerWidth - panelW - 8;
-  if (leftPos < 8) leftPos = 8;
-  if (topPos + 280 > window.innerHeight) topPos = rect.top - 290;
-  if (topPos < 8) topPos = 8;
-  panel.style.top   = topPos + 'px';
-  panel.style.left  = leftPos + 'px';
-  panel.style.width = panelW + 'px';
-}
-
-function toggleAdvDropdown(e) {
-  e.stopPropagation();
-  const panel = document.getElementById('advDropdownPanel');
-  const btn   = document.getElementById('advDropdownBtn');
-  const input = document.getElementById('advSearchInput');
-  if (!panel) return;
-  if (panel.classList.contains('open')) {
-    closeAdvDropdown();
-    return;
-  }
-  // IMPORTANTE: leer rect ANTES de mostrar el panel para coordenadas limpias
-  const rect   = btn.getBoundingClientRect();
-  const panelW = Math.max(rect.width, 280);
-  let topPos  = rect.bottom + 4;
-  let leftPos = rect.left;
-  if (leftPos + panelW > window.innerWidth - 8) leftPos = window.innerWidth - panelW - 8;
-  if (leftPos < 8) leftPos = 8;
-  if (topPos + 280 > window.innerHeight) topPos = rect.top - 290;
-  if (topPos < 8) topPos = 8;
-  panel.style.top   = topPos + 'px';
-  panel.style.left  = leftPos + 'px';
-  panel.style.width = panelW + 'px';
-  panel.classList.add('open');
-  btn.classList.add('open');
-  _advCurrentList = _allAdvisors.slice();
-  if (input) { input.value = ''; filterAdvOptions(''); setTimeout(() => input.focus(), 30); }
-}
-
-function closeAdvDropdown() {
-  const panel = document.getElementById('advDropdownPanel');
-  const btn   = document.getElementById('advDropdownBtn');
-  if (panel) { panel.classList.remove('open'); }
-  if (btn)   { btn.classList.remove('open'); }
-}
-
-// Cerrar con Escape
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeAdvDropdown();
-});
-
-// Reposicionar al hacer scroll o resize
-window.addEventListener('scroll', function() {
-  const panel = document.getElementById('advDropdownPanel');
-  if (panel && panel.classList.contains('open')) _positionAdvPanel();
-}, true);
-window.addEventListener('resize', function() {
-  const panel = document.getElementById('advDropdownPanel');
-  if (panel && panel.classList.contains('open')) _positionAdvPanel();
-});
-
-document.addEventListener('click', function(e) {
-  const wrap = document.getElementById('advDropdownWrap');
-  if (wrap && !wrap.contains(e.target)) closeAdvDropdown();
-});
 
 // ── Obtener datos filtrados ───────────────────────────────────────────────
 function getAutoresData() {
-  const advisor = (document.getElementById('autoresFilterAdvisor')?.value || '').trim();
-  const year    = (document.getElementById('autoresFilterYear')?.value    || '').trim();
+  const advisorRaw = (document.getElementById('autoresFilterAdvisor')?.value || '').trim();
+  const advisorQ   = normStr(advisorRaw);
+  const year       = (document.getElementById('autoresFilterYear')?.value    || '').trim();
 
   return validRecords.filter(r => {
     const yr = (r.date || '').slice(0, 4);
     if (year && yr !== year) return false;
-    if (advisor) {
-      const advList = (r.advisors || '').split(';').map(a => a.trim());
-      if (!advList.includes(advisor)) return false;
+    if (advisorQ) {
+      const advNorm = normStr(r.advisors || '');
+      if (!advNorm.includes(advisorQ)) return false;
     }
     return true;
   });
@@ -3003,16 +2967,12 @@ function getAutoresData() {
 
 // ── Limpiar filtros ───────────────────────────────────────────────────────
 function clearAutoresFilters() {
-  const fa = document.getElementById('autoresFilterAdvisor');
-  if (fa) fa.value = '';
-  const lbl = document.getElementById('advDropdownLabel');
-  if (lbl) lbl.textContent = 'Todos los asesores';
-  document.querySelectorAll('#advOptionsList .adv-option').forEach(o => {
-    o.classList.toggle('selected', o.dataset.value === '');
-  });
-  const si = document.getElementById('advSearchInput');
-  if (si) si.value = '';
-  closeAdvDropdown();
+  const inp      = document.getElementById('autoresFilterAdvisor');
+  const clearBtn = document.getElementById('advSearchFreeClear');
+  const hint     = document.getElementById('advSearchFreeHint');
+  if (inp)      inp.value = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  if (hint)     hint.style.display     = 'none';
   const fy = document.getElementById('autoresFilterYear');
   if (fy) fy.value = '';
   const fs = document.getElementById('autoresSearch');
@@ -3388,17 +3348,7 @@ function autoresChangePage(delta) {
 </script>
 
 
-  <!-- Dropdown panel de asesores — fuera de cualquier stacking context -->
-  <div id="advDropdownPanel">
-    <div class="adv-search-wrap" style="position:relative;">
-      <i class="fa-solid fa-magnifying-glass adv-search-icon"></i>
-      <input type="text" class="adv-search-input" id="advSearchInput"
-        placeholder="Buscar asesor…"
-        oninput="filterAdvOptions(this.value)"
-        onclick="event.stopPropagation()" />
-    </div>
-    <div class="adv-list" id="advOptionsList"></div>
-  </div>
+  <!-- Panel de dropdown eliminado: reemplazado por búsqueda libre -->
 
   <!-- ── Modal de contraseña para Sincronizar ─────────────────────────── -->
   <div id="syncPasswordModal" style="
