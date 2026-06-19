@@ -195,6 +195,8 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 app.use(cors());
 app.use(express.json());
 
+app.use(express.static(path.join(__dirname)));
+
 // ─── GET / ─────────────────────────────────────────────────────────────────
 app.get('/', (_req, res) => res.sendFile(HTML_PATH));
 
