@@ -864,6 +864,7 @@
       <div id="unas-loading-bar-fill"></div>
     </div>
     <div id="unas-loading-percent">0%</div>
+    <div id="unas-loading-status" style="margin-top:10px;font-size:.78rem;color:rgba(255,255,255,.65);letter-spacing:.02em;min-height:1.2em;transition:opacity .3s;">Iniciando aplicación…</div>
   </div>
   <!-- ════════════════════════════════════════════════════════════════ -->
 
@@ -1683,14 +1684,28 @@ async function init() {
 
 async function loadData() {
   try {
+    // ── Etapa 1: conectando (8 → 25%) ───────────────────────────────────
+    if (window._loadingProgress) window._loadingProgress(25, 'Conectando al servidor…');
+
     const [dr, mr] = await Promise.all([fetch('/data'), fetch('/metadata')]);
+
+    // ── Etapa 2: descargando datos (25 → 60%) ───────────────────────────
+    if (window._loadingProgress) window._loadingProgress(55, 'Descargando registros…');
+
     allRecords = await dr.json();
+
+    // ── Etapa 3: procesando registros (60 → 85%) ────────────────────────
+    if (window._loadingProgress) window._loadingProgress(80, 'Procesando ' + allRecords.length.toLocaleString('es-PE') + ' registros…');
+
     validRecords = allRecords.filter(r => r.type && r.type.trim() !== '');
     const meta = await mr.json();
     syncStatus = meta?.syncState?.status || 'idle';
 
     updateMetaBar(meta);
     renderBtnSync();
+
+    // ── Etapa 4: renderizando (85 → 95%) ────────────────────────────────
+    if (window._loadingProgress) window._loadingProgress(92, 'Preparando interfaz…');
 
     if (!Array.isArray(validRecords) || validRecords.length === 0) {
       showEmpty(true);
@@ -1699,8 +1714,13 @@ async function loadData() {
       populateFilters();
       applyFilters();
     }
+
+    // ── Datos listos → cerrar loading screen ────────────────────────────
+    if (window._loadingDone) window._loadingDone(validRecords.length);
+
   } catch (e) {
     console.error('Error cargando datos:', e);
+    if (window._loadingError) window._loadingError(e.message);
   }
 }
 
@@ -3599,79 +3619,89 @@ function autoresChangePage(delta) {
 
 
   <script>
-  /* ── Loading Screen Controller ────────────────────────────────────── */
+  /* ── Loading Screen Controller — PROGRESO REAL ────────────────────────
+     Se sincroniza con loadData() mediante tres callbacks globales:
+       window._loadingProgress(pct, mensaje)  → actualiza barra + texto
+       window._loadingDone(totalRegistros)    → completa al 100% y cierra
+       window._loadingError(msg)              → muestra error y cierra
+  ──────────────────────────────────────────────────────────────────────── */
   (function () {
-    const screen  = document.getElementById('unas-loading-screen');
-    const bar     = document.getElementById('unas-loading-bar-fill');
-    const pct     = document.getElementById('unas-loading-percent');
+    const screen   = document.getElementById('unas-loading-screen');
+    const bar      = document.getElementById('unas-loading-bar-fill');
+    const pct      = document.getElementById('unas-loading-percent');
+    const statusEl = document.getElementById('unas-loading-status');
     if (!screen) return;
 
-    let progress  = 0;
-    let done      = false;
+    let currentPct = 0;
+    let animFrame  = null;
+    let closed     = false;
 
-    // Simula progreso rápido hasta ~85%, luego espera al evento 'load'
-    const steps = [
-      { target: 30,  delay: 120 },
-      { target: 55,  delay: 180 },
-      { target: 72,  delay: 220 },
-      { target: 85,  delay: 300 },
-    ];
-
-    function setProgress(val) {
-      progress = Math.min(val, 100);
-      bar.style.width = progress + '%';
-      pct.textContent = Math.round(progress) + '%';
-    }
-
-    // Avance simulado por etapas
-    let stepIdx = 0;
-    function runStep() {
-      if (done || stepIdx >= steps.length) return;
-      const { target, delay } = steps[stepIdx++];
-      const diff = target - progress;
-      const inc  = diff / 12;
-      let count  = 0;
-      const iv = setInterval(() => {
-        if (done) { clearInterval(iv); return; }
-        count++;
-        setProgress(progress + inc);
-        if (count >= 12) {
-          clearInterval(iv);
-          setTimeout(runStep, delay);
+    /* Anima suavemente la barra hasta el valor objetivo */
+    function animateTo(target, onComplete) {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      const step = () => {
+        const diff = target - currentPct;
+        if (Math.abs(diff) < 0.4) {
+          currentPct = target;
+          applyProgress(currentPct);
+          if (onComplete) onComplete();
+          return;
         }
-      }, 40);
-    }
-    runStep();
-
-    // Cuando la página termina de cargar → completar al 100% y ocultar
-    function finishLoading() {
-      if (done) return;
-      done = true;
-
-      // Avanza rápido hasta 100%
-      let p = progress;
-      const finish = setInterval(() => {
-        p = Math.min(p + 3, 100);
-        setProgress(p);
-        if (p >= 100) {
-          clearInterval(finish);
-          setTimeout(() => {
-            screen.classList.add('fade-out');
-            setTimeout(() => {
-              screen.style.display = 'none';
-            }, 580);
-          }, 350);
-        }
-      }, 18);
+        currentPct += diff * 0.12;
+        applyProgress(currentPct);
+        animFrame = requestAnimationFrame(step);
+      };
+      animFrame = requestAnimationFrame(step);
     }
 
-    if (document.readyState === 'complete') {
-      finishLoading();
-    } else {
-      window.addEventListener('load', finishLoading);
-      // Fallback: si tarda más de 12s, cierra de todos modos
-      setTimeout(finishLoading, 12000);
+    function applyProgress(val) {
+      const v = Math.min(Math.max(val, 0), 100);
+      if (bar) bar.style.width = v.toFixed(1) + '%';
+      if (pct) pct.textContent = Math.round(v) + '%';
     }
+
+    function setStatus(msg) {
+      if (statusEl) statusEl.textContent = msg;
+    }
+
+    function closeScreen() {
+      if (closed) return;
+      closed = true;
+      applyProgress(100);
+      if (pct) pct.textContent = '100%';
+      setTimeout(() => {
+        screen.classList.add('fade-out');
+        setTimeout(() => { screen.style.display = 'none'; }, 580);
+      }, 380);
+    }
+
+    /* Inicio: pequeño pulso para indicar actividad */
+    animateTo(8);
+    setStatus('Iniciando aplicación…');
+
+    /* ── Callbacks expuestos a loadData() ── */
+    window._loadingProgress = function (targetPct, mensaje) {
+      if (closed) return;
+      setStatus(mensaje || '');
+      animateTo(targetPct);
+    };
+
+    window._loadingDone = function (totalRegistros) {
+      if (closed) return;
+      setStatus('✓ ' + (totalRegistros || 0).toLocaleString('es-PE') + ' registros cargados');
+      animateTo(100, closeScreen);
+    };
+
+    window._loadingError = function (msg) {
+      if (closed) return;
+      setStatus('Error al cargar — ' + (msg || ''));
+      animateTo(100, closeScreen);
+    };
+
+    /* Fallback: cierra solo si loadData() nunca responde en 20s */
+    setTimeout(() => {
+      if (!closed) { setStatus('Cargando…'); closeScreen(); }
+    }, 20000);
   })();
   </script>
 
