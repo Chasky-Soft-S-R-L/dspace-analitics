@@ -1,0 +1,3536 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Repositorio Institucional UNAS</title>
+  <link type="image/x-icon" href="https://portalweb.unas.edu.pe/sgunas/resources/theme/images/logo.png" rel="shortcut icon">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       REPOSITORIO UNAS — Modern UI System v2.0
+       Paleta: Verde UNAS · Glassmorphism · Micro-animations
+    ═══════════════════════════════════════════════════════════════ */
+
+    /* ── Base & Tipografía ── */
+    *, body {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      box-sizing: border-box;
+    }
+
+    /* ── Animaciones ── */
+    @keyframes fadeInUp {
+      from { opacity:0; transform:translateY(14px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes shimmer {
+      0%   { background-position:-600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+    @keyframes slideDown {
+      from { opacity:0; transform:translateY(-14px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes glowPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+      50%     { box-shadow: 0 0 0 6px rgba(34,197,94,.18); }
+    }
+    @keyframes tabSlide {
+      from { opacity:0; transform:translateX(-8px); }
+      to   { opacity:1; transform:translateX(0); }
+    }
+    @keyframes ripple {
+      0%   { transform:scale(0); opacity:.6; }
+      100% { transform:scale(2.4); opacity:0; }
+    }
+
+    .fade-in     { animation: fadeInUp .38s cubic-bezier(.22,1,.36,1) both; }
+    .shimmer-bg  { background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);
+                   background-size:1200px 100%; animation:shimmer 1.5s infinite; }
+    .spin        { animation: spin 1s linear infinite; }
+    .pulse-dot   { animation: pulse 1.5s ease-in-out infinite; }
+    .slide-down  { animation: slideDown .32s cubic-bezier(.22,1,.36,1) both; }
+
+    /* ── Tarjetas ── */
+    .card {
+      transition: transform .22s cubic-bezier(.22,1,.36,1),
+                  box-shadow .22s ease,
+                  border-color .22s ease;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(0,0,0,.10), 0 0 0 1px rgba(134,239,172,.4);
+      border-color: #86efac;
+    }
+
+    /* ── Barra de progreso ── */
+    #progressBar {
+      transition: width .55s cubic-bezier(.4,0,.2,1);
+      background: linear-gradient(90deg, #22c55e, #4ade80, #86efac);
+      background-size: 200% 100%;
+      animation: shimmer 2s linear infinite;
+    }
+
+    /* ── Scrollbar personalizado ── */
+    ::-webkit-scrollbar       { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background:#f1f5f9; border-radius:3px; }
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #22c55e, #15803d);
+      border-radius:3px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: #166534; }
+
+    /* ── Badge tipos ── */
+    .badge {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:2px 9px; border-radius:9999px;
+      font-size:.67rem; font-weight:700;
+      letter-spacing:.02em;
+    }
+
+    /* ── Tabla hover ── */
+    tbody tr {
+      transition: background .14s ease;
+    }
+
+    /* ── Custom Searchable Dropdown (Autores) ── */
+    .adv-dropdown { position: static; }
+    .adv-dropdown-btn {
+      width: 100%; display: flex; align-items: center;
+      justify-content: space-between; gap: 8px;
+      padding: 10px 14px; border-radius: 12px;
+      border: 1px solid #e2e8f0; background: #f8fafc;
+      font-size: .875rem; color: #334155; cursor: pointer;
+      transition: border-color .18s, box-shadow .18s;
+      text-align: left;
+    }
+    .adv-dropdown-btn:focus, .adv-dropdown-btn.open {
+      outline: none; border-color: #4ade80;
+      box-shadow: 0 0 0 3px rgba(74,222,128,.2); background: #fff;
+    }
+    .adv-dropdown-btn .adv-btn-label {
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .adv-dropdown-btn .adv-btn-arrow {
+      flex-shrink: 0; transition: transform .2s; color: #94a3b8; font-size: .75rem;
+    }
+    .adv-dropdown-btn.open .adv-btn-arrow { transform: rotate(180deg); }
+    #advDropdownPanel {
+      display: none;
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      width: 280px;
+      max-width: 90vw;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.10);
+      z-index: 2147483647 !important;
+      overflow: hidden;
+    }
+    #advDropdownPanel.open { display: block; }
+    .adv-search-wrap {
+      padding: 10px 10px 6px; border-bottom: 1px solid #f1f5f9;
+      position: sticky; top: 0; background: #fff; z-index: 1;
+    }
+    .adv-search-input {
+      width: 100%; padding: 7px 12px 7px 32px; border-radius: 9px;
+      border: 1px solid #e2e8f0; background: #f8fafc;
+      font-size: .82rem; color: #334155; outline: none;
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .adv-search-input:focus {
+      border-color: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.15); background: #fff;
+    }
+    .adv-search-icon {
+      position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+      color: #94a3b8; font-size: .75rem; pointer-events: none;
+    }
+    .adv-list { max-height: 240px; overflow-y: auto; padding: 6px 0; }
+    .adv-option {
+      padding: 8px 16px; font-size: .82rem; color: #334155; cursor: pointer;
+      transition: background .12s; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .adv-option:hover { background: #f0fdf4; color: #15803d; }
+    .adv-option.selected { background: #dcfce7; color: #15803d; font-weight: 600; }
+    .adv-option.all-opt { color: #64748b; font-style: italic; border-bottom: 1px solid #f1f5f9; margin-bottom: 2px; }
+    .adv-option.all-opt.selected { background: #f1f5f9; color: #334155; font-style: normal; font-weight: 600; }
+    .adv-no-results { padding: 14px 16px; font-size: .82rem; color: #94a3b8; text-align: center; }
+
+    /* ── Paginación ── */
+    .pg-btn {
+      min-width:36px; height:36px;
+      display:flex; align-items:center; justify-content:center;
+      border-radius:9px; font-size:.82rem; font-weight:600;
+      transition: all .18s cubic-bezier(.22,1,.36,1);
+      border:1.5px solid #e2e8f0;
+      background:#fff; color:#475569; cursor:pointer;
+      position:relative; overflow:hidden;
+    }
+    .pg-btn:hover:not(:disabled) {
+      background: #f0fdf4;
+      border-color: #86efac;
+      color: #15803d;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(34,197,94,.15);
+    }
+    .pg-btn.active {
+      background: linear-gradient(135deg, #166534, #15803d);
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(22,101,52,.35);
+    }
+    .pg-btn:disabled { opacity:.32; cursor:not-allowed; }
+
+    /* ── Filtros / Selects — Modern Pill Style ── */
+    .filter-select {
+      border: 1.5px solid #e8edf4;
+      border-radius: 12px;
+      padding: 9px 36px 9px 14px;
+      font-size: .81rem;
+      font-weight: 500;
+      color: #374151;
+      background: #f8fafc;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 11px center;
+      cursor: pointer;
+      transition: all .2s cubic-bezier(.22,1,.36,1);
+      box-shadow: 0 1px 3px rgba(0,0,0,.05), inset 0 1px 2px rgba(255,255,255,.8);
+    }
+    .filter-select:focus {
+      border-color: #4ade80;
+      box-shadow: 0 0 0 3.5px rgba(74,222,128,.2), 0 2px 8px rgba(22,163,74,.1);
+      background-color: #f0fdf4;
+      color: #166534;
+    }
+    .filter-select:hover:not(:focus) {
+      border-color: #86efac;
+      background-color: #f0fdf4;
+      box-shadow: 0 2px 8px rgba(22,163,74,.1);
+    }
+
+    /* ── Input búsqueda — Modern ── */
+    #searchInput {
+      border: 2px solid #e8edf4;
+      border-radius: 14px;
+      padding: 11px 16px 11px 46px;
+      font-size: .88rem;
+      outline: none;
+      transition: all .22s cubic-bezier(.22,1,.36,1);
+      width: 100%;
+      background: #f8fafc;
+      color: #1e293b;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04), inset 0 1px 3px rgba(255,255,255,.9);
+    }
+    #searchInput::placeholder { color:#b0bec5; font-weight:400; letter-spacing:.01em; }
+    #searchInput:focus {
+      border-color: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34,197,94,.15), 0 4px 16px rgba(22,163,74,.12);
+      background: #fff;
+      animation: glowPulse 2s ease-in-out infinite;
+    }
+    #searchInput:hover:not(:focus) {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+
+    /* ── Botones principales ── */
+    .btn-primary {
+      background: linear-gradient(135deg, #166534 0%, #15803d 60%, #22c55e 100%);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 18px;
+      font-size: .82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s cubic-bezier(.22,1,.36,1);
+      box-shadow: 0 3px 10px rgba(22,101,52,.3);
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(22,101,52,.4);
+      filter: brightness(1.08);
+    }
+    .btn-primary:active { transform:translateY(0); }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      color: #166534;
+      border: 1.5px solid #86efac;
+      border-radius: 11px;
+      padding: 8px 16px;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .22s cubic-bezier(.22,1,.36,1);
+      box-shadow: 0 2px 8px rgba(22,163,74,.1);
+    }
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+      border-color: #4ade80;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(22,163,74,.2);
+    }
+
+    /* ── Tabs de navegación ── */
+    .main-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 20px;
+      font-size: .82rem;
+      font-weight: 600;
+      color: rgba(255,255,255,.65);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      transition: color .2s ease;
+      white-space: nowrap;
+      letter-spacing: .01em;
+    }
+    .main-tab::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 50%;
+      width: 0; height: 2.5px;
+      background: linear-gradient(90deg, #4ade80, #22c55e);
+      border-radius: 2px 2px 0 0;
+      transform: translateX(-50%);
+      transition: width .28s cubic-bezier(.22,1,.36,1);
+    }
+    .main-tab:hover { color: rgba(255,255,255,.9); }
+    .main-tab:hover::after { width: 60%; }
+    .main-tab.active {
+      color: #fff;
+      font-weight: 700;
+    }
+    .main-tab.active::after {
+      width: 100%;
+      background: linear-gradient(90deg, #4ade80, #86efac);
+      box-shadow: 0 0 8px rgba(74,222,128,.6);
+    }
+    .main-tab svg {
+      transition: transform .2s ease;
+    }
+    .main-tab:hover svg { transform: scale(1.12); }
+    .main-tab.active svg { filter: drop-shadow(0 0 4px rgba(74,222,128,.6)); }
+
+    /* ── Gradiente header ── */
+    .header-gradient {
+      background: linear-gradient(135deg, #0a3d1f 0%, #14532d 35%, #166534 70%, #15803d 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .header-gradient::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 80% 50%, rgba(34,197,94,.12) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    /* ── Line clamp ── */
+    .clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .clamp-3 { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+
+    /* ── Modal backdrop ── */
+    #modal { backdrop-filter:blur(6px); }
+
+    /* ── Tooltip ── */
+    [data-tip] { position:relative; }
+    [data-tip]:hover::after {
+      content: attr(data-tip);
+      position: absolute; bottom:calc(100% + 7px); left:50%;
+      transform: translateX(-50%);
+      background: #1e293b; color:#fff;
+      font-size: .7rem; padding: 5px 10px; border-radius: 7px;
+      white-space: nowrap; pointer-events: none; z-index:100;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    }
+
+    /* ── Dashboard KPI Cards — Modern Glassmorphism ── */
+    .kpi-card {
+      border-radius: 20px;
+      padding: 22px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease;
+      border: 1px solid rgba(255,255,255,.6);
+      box-shadow: 0 4px 20px rgba(0,0,0,.06), 0 1px 4px rgba(0,0,0,.04);
+      background: #fff;
+    }
+    .kpi-card:hover {
+      transform: translateY(-6px) scale(1.01);
+      box-shadow: 0 20px 48px rgba(0,0,0,.13);
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: -40%; right: -20%;
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.12);
+      pointer-events: none;
+    }
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      bottom: -30%; left: -10%;
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.06);
+      pointer-events: none;
+    }
+
+    /* ── Chart containers — Modern ── */
+    .chart-card {
+      background: #fff;
+      border-radius: 20px;
+      border: 1px solid #f0f4f8;
+      padding: 22px 24px;
+      transition: all .25s cubic-bezier(.22,1,.36,1);
+      box-shadow: 0 2px 12px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.03);
+      position: relative;
+    }
+    .chart-card:hover {
+      box-shadow: 0 12px 32px rgba(0,0,0,.1);
+      transform: translateY(-2px);
+      border-color: #e2e8f0;
+    }
+    .chart-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      margin: -22px -24px 18px -24px;
+      border-radius: 20px 20px 0 0;
+      border-bottom: 1px solid #f0f4f8;
+    }
+    .chart-card-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Stats pills ── */
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: .75rem;
+      font-weight: 600;
+      background: rgba(255,255,255,.12);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.2);
+      color: rgba(255,255,255,.9);
+      transition: background .18s ease;
+    }
+    .stat-pill:hover {
+      background: rgba(255,255,255,.2);
+    }
+
+
+
+
+    /* ── View toggle buttons ── (isolated — no Tailwind conflict) */
+    .view-btn {
+      all: unset;
+      box-sizing: border-box;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0;
+      padding: 7px 11px !important;
+      font-size: .82rem;
+      font-weight: 600;
+      line-height: 1;
+      background: #ffffff !important;
+      color: #64748b !important;
+      border: none !important;
+      cursor: pointer;
+      transition: background .18s ease, color .18s ease;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .view-btn:first-child { border-radius: 10px 0 0 10px !important; }
+    .view-btn:last-child  { border-radius: 0 10px 10px 0 !important; }
+    .view-btn i { font-size: .9rem; line-height: 1; }
+    .view-btn.active {
+      background: linear-gradient(135deg, #166534, #15803d) !important;
+      color: #ffffff !important;
+    }
+    .view-btn:not(.active):hover {
+      background: #f0fdf4 !important;
+      color: #15803d !important;
+    }
+    .view-toggle-wrap {
+      display: inline-flex;
+      border-radius: 11px;
+      border: 1.5px solid #d1d5db;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    /* ── Sync/action buttons ── */
+    .btn-sync {
+      background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.08));
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.25);
+      color: #fff;
+      border-radius: 9px;
+      padding: 7px 14px;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s cubic-bezier(.22,1,.36,1);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-sync:hover {
+      background: rgba(255,255,255,.28);
+      border-color: rgba(255,255,255,.45);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(0,0,0,.2);
+    }
+    .btn-sync:active { transform: translateY(0); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       DASHBOARD — Filtros, Selects, Labels, Botón Actualizar
+    ═══════════════════════════════════════════════════════════════ */
+
+    /* ── dash-filter: uniformizado con filter-select ── */
+    .dash-filter {
+      border: 1.5px solid #e8edf4;
+      border-radius: 12px;
+      padding: 9px 36px 9px 14px;
+      font-size: .81rem;
+      font-weight: 500;
+      color: #374151;
+      background: #f8fafc;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 11px center;
+      cursor: pointer;
+      transition: all .2s cubic-bezier(.22,1,.36,1);
+      box-shadow: 0 1px 3px rgba(0,0,0,.05), inset 0 1px 2px rgba(255,255,255,.8);
+      min-width: 90px;
+    }
+    .dash-filter:focus {
+      border-color: #4ade80;
+      box-shadow: 0 0 0 3.5px rgba(74,222,128,.2), 0 2px 8px rgba(22,163,74,.1);
+      background-color: #f0fdf4;
+      color: #166534;
+    }
+    .dash-filter:hover:not(:focus) {
+      border-color: #86efac;
+      background-color: #f0fdf4;
+      box-shadow: 0 2px 8px rgba(22,163,74,.1);
+    }
+    .dash-filter option {
+      color: #1e293b;
+      font-weight: 500;
+      background: #fff;
+    }
+
+    /* ── Labels de filtros del dashboard ── */
+    .dash-label {
+      font-size: .72rem;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* ── Botón Actualizar del dashboard ── */
+    #btnRefreshDash {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      border-radius: 10px;
+      border: 1.5px solid #bbf7d0;
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      color: #15803d;
+      font-size: .78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s cubic-bezier(.22,1,.36,1);
+      box-shadow: 0 2px 8px rgba(22,101,52,.12);
+      letter-spacing: .01em;
+    }
+    #btnRefreshDash:hover {
+      background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+      border-color: #86efac;
+      color: #166534;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(22,101,52,.22);
+    }
+    #btnRefreshDash:hover svg {
+      transform: rotate(180deg);
+    }
+    #btnRefreshDash:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 6px rgba(22,101,52,.14);
+    }
+    #btnRefreshDash svg {
+      transition: transform .45s cubic-bezier(.22,1,.36,1);
+    }
+
+    /* ── Wrapper de filtros del header del dashboard — Modern ── */
+    .dash-filters-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 50%, #f8fafc 100%);
+      border: 1.5px solid #e2f5e8;
+      border-radius: 16px;
+      padding: 12px 18px;
+      box-shadow: 0 4px 16px rgba(22,163,74,.08), 0 1px 4px rgba(0,0,0,.04);
+      backdrop-filter: blur(8px);
+    }
+
+    /* ── Separador vertical entre filtros ── */
+    .dash-filter-sep {
+      width: 1px;
+      height: 24px;
+      background: linear-gradient(180deg, transparent, #d1fae5, transparent);
+      flex-shrink: 0;
+    }
+
+    /* ── Selects inline dentro de chart-cards (uniformizado) ── */
+    .chart-card .dash-filter {
+      font-size: .78rem;
+      padding: 7px 30px 7px 11px;
+      border-radius: 10px;
+      min-width: 80px;
+    }
+
+    /* ── KPI cards mejoradas ── */
+    .kpi-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -.02em;
+    }
+    .kpi-label {
+      font-size: .75rem;
+      color: #64748b;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .kpi-delta {
+      font-size: .68rem;
+      font-weight: 700;
+      margin-top: 4px;
+      opacity: .85;
+    }
+
+
+    /* ── Chart card titles — Modern ── */
+    .chart-title {
+      font-size: .9rem;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -.015em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chart-title i {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: .8rem;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      color: #16a34a;
+    }
+    .chart-subtitle {
+      font-size: .72rem;
+      color: #94a3b8;
+      font-weight: 500;
+      margin-top: 3px;
+      padding-left: 36px;
+    }
+
+
+    /* ── Input con estilo filter-select (uniformizado) ── */
+    input.filter-select {
+      padding-left: 14px !important;
+      background-image: none !important;
+      background-position: unset !important;
+      height: auto;
+    }
+    input.filter-select:focus {
+      border-color: #4ade80 !important;
+      box-shadow: 0 0 0 3.5px rgba(74,222,128,.2), 0 2px 8px rgba(22,163,74,.1) !important;
+      background-color: #f0fdf4 !important;
+      color: #166534 !important;
+    }
+    input.filter-select:hover:not(:focus) {
+      border-color: #86efac !important;
+      background-color: #f0fdf4 !important;
+      box-shadow: 0 2px 8px rgba(22,163,74,.1) !important;
+    }
+
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     HEADER INSTITUCIONAL
+══════════════════════════════════════════════════════════════════════════ -->
+<header class="header-gradient text-white shadow-xl">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+
+      <!-- Identidad -->
+      <div class="flex items-center gap-4">
+        <div class="w-14 h-14 rounded-2xl bg-white flex items-center justify-center overflow-hidden p-1" style="box-shadow:0 4px 16px rgba(0,0,0,.25), 0 0 0 2px rgba(255,255,255,.15);">
+          <img src="https://repositorio.unas.edu.pe/assets/dspace/images/unas-logo.png"
+               alt="Logotipo UNAS"
+               class="w-full h-full object-contain"
+               onerror="this.onerror=null;this.src='';this.alt='UNAS'"/>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight leading-tight">Repositorio Institucional UNAS</h1>
+          <p class="text-green-200 text-xs font-medium mt-0.5">Universidad Nacional Agraria de la Selva · Tingo María, Perú</p>
+        </div>
+      </div>
+
+      <!-- Botón de sincronización -->
+      <button id="btnSync" onclick="handleSyncBtn()"
+        class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg transition-all duration-200 whitespace-nowrap">
+      </button>
+    </div>
+
+    <!-- Stats rápidas -->
+    <div class="mt-4 flex flex-wrap gap-2">
+      <span class="stat-pill">
+        <span class="w-2 h-2 rounded-full bg-green-300 pulse-dot inline-block"></span>
+        Sync: <strong id="metaLastSync">—</strong>
+      </span>
+      <span class="stat-pill"><i class="fa-solid fa-box-archive"></i> <strong id="metaTotal">0</strong> registros</span>
+      <span class="stat-pill"><i class="fa-solid fa-star" style="color:#fbbf24;font-size:.75rem;"></i> <strong id="metaNew">0</strong> nuevos</span>
+      <span class="stat-pill"><i class="fa-solid fa-arrows-rotate" style="font-size:.75rem;"></i> <strong id="metaUpd">0</strong> actualizados</span>
+      <span id="metaStateLabel" class="stat-pill font-bold"></span>
+    </div>
+
+    <!-- ── Navegación por pestañas ── -->
+    <div class="mt-3 flex gap-0 border-t -mx-4 sm:-mx-6 px-4 sm:px-6 overflow-x-auto" style="border-color:rgba(74,222,128,.2);">
+      <button class="main-tab active" id="tabBtnExplorer" onclick="switchMainTab('explorer')">
+        <i class="fa-solid fa-list-ul"></i>
+        Explorador
+      </button>
+      <button class="main-tab" id="tabBtnDashboard" onclick="switchMainTab('dashboard')">
+        <i class="fa-solid fa-chart-bar"></i>
+        Dashboard
+      </button>
+      <button class="main-tab" id="tabBtnAutores" onclick="switchMainTab('autores')">
+        <i class="fa-solid fa-user-graduate"></i>
+        Asesores
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PANEL DE PROGRESO (sticky, SSE)
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="progressPanel" class="hidden sticky top-0 z-50 slide-down">
+  <div class="bg-gradient-to-r from-green-700 to-emerald-600 text-white shadow-lg px-4 py-3">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex items-center justify-between mb-2 gap-3 flex-wrap">
+        <div class="flex items-center gap-2 text-sm font-semibold">
+          <i class="fa-solid fa-circle-notch spin flex-shrink-0" style="font-size:1rem;color:#fff;"></i>
+          <span id="progressMsg">Iniciando sincronización…</span>
+        </div>
+        <div class="flex items-center gap-4 text-xs">
+          <span>Nuevos: <strong id="pNew">0</strong></span>
+          <span>Actualizados: <strong id="pUpd">0</strong></span>
+          <span id="pPct" class="font-bold text-green-200">0%</span>
+        </div>
+      </div>
+      <!-- Barra de progreso -->
+      <div class="w-full bg-green-900/50 rounded-full h-1.5">
+        <div id="progressBar" class="bg-white h-1.5 rounded-full" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="explorerView">
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CONTROLES DE BÚSQUEDA Y FILTROS — Modern v3
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-2">
+  <div style="background:#fff; border-radius:20px; border:1.5px solid #f0f4f8; padding:16px 20px; box-shadow:0 4px 24px rgba(0,0,0,.06),0 1px 4px rgba(0,0,0,.03);">
+
+    <!-- Búsqueda principal -->
+    <div class="relative mb-4">
+      <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:15px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.9rem;pointer-events:none;"></i>
+      <input id="searchInput" type="text" autocomplete="off"
+        placeholder="Buscar por título, autor, resumen o tema…"
+        oninput="debounceFilter()"/>
+    </div>
+
+    <!-- Fila de filtros -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+
+      <!-- Tipo -->
+      <div style="position:relative;flex:1;min-width:140px;">
+        <i class="fa-solid fa-file-lines" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.75rem;pointer-events:none;z-index:1;"></i>
+        <select id="filterType" class="filter-select" style="padding-left:30px;width:100%;" onchange="applyFilters()">
+          <option value="">Todos los tipos</option>
+        </select>
+      </div>
+
+      <!-- Comunidad -->
+      <div style="position:relative;flex:1;min-width:140px;">
+        <i class="fa-solid fa-building-columns" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.75rem;pointer-events:none;z-index:1;"></i>
+        <select id="filterCommunity" class="filter-select" style="padding-left:30px;width:100%;" onchange="applyFilters()">
+          <option value="">Todas las comunidades</option>
+        </select>
+      </div>
+
+      <!-- Colección -->
+      <div style="position:relative;flex:1;min-width:160px;">
+        <i class="fa-solid fa-folder-open" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.75rem;pointer-events:none;z-index:1;"></i>
+        <select id="filterCollection" class="filter-select" style="padding-left:30px;width:100%;" onchange="applyFilters()">
+          <option value="">Todas las colecciones</option>
+        </select>
+      </div>
+
+      <!-- Año -->
+      <div style="position:relative;min-width:110px;">
+        <i class="fa-solid fa-calendar-days" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.75rem;pointer-events:none;z-index:1;"></i>
+        <select id="filterYear" class="filter-select" style="padding-left:30px;" onchange="applyFilters()">
+          <option value="">Todos los años</option>
+        </select>
+      </div>
+
+      <!-- Ordenar -->
+      <div style="position:relative;min-width:150px;">
+        <i class="fa-solid fa-arrow-up-wide-short" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.75rem;pointer-events:none;z-index:1;"></i>
+        <select id="sortBy" class="filter-select" style="padding-left:30px;" onchange="applyFilters()">
+          <option value="date_desc">Más recientes</option>
+          <option value="date_asc">Más antiguos</option>
+          <option value="title_az">A-Z Título</option>
+          <option value="title_za">Z-A Título</option>
+        </select>
+      </div>
+
+      <!-- Separador visual -->
+      <div style="width:1px;height:28px;background:linear-gradient(180deg,transparent,#e2e8f0,transparent);flex-shrink:0;"></div>
+
+      <!-- Botón limpiar filtros -->
+      <button onclick="clearFilters()" title="Limpiar filtros"
+        style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:12px;border:1.5px solid #fecdd3;background:#fff5f5;color:#dc2626;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.22,1,.36,1);white-space:nowrap;"
+        onmouseover="this.style.background='#fee2e2';this.style.borderColor='#fca5a5';this.style.transform='translateY(-1px)'"
+        onmouseout="this.style.background='#fff5f5';this.style.borderColor='#fecdd3';this.style.transform='translateY(0)'">
+        <i class="fa-solid fa-xmark"></i> Limpiar
+      </button>
+
+      <!-- Botón Exportar Excel -->
+      <button id="btnExcel" onclick="exportarExcel()" title="Exportar registros filtrados a Excel"
+        style="display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:12px;border:1.5px solid #86efac;background:linear-gradient(135deg,#f0fdf4,#dcfce7);color:#15803d;font-size:.81rem;font-weight:700;cursor:pointer;transition:all .22s cubic-bezier(.22,1,.36,1);white-space:nowrap;box-shadow:0 2px 8px rgba(22,163,74,.12);"
+        onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(22,163,74,.22)'"
+        onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 2px 8px rgba(22,163,74,.12)'">
+        <i class="fa-solid fa-file-excel" style="color:#16a34a;"></i>
+        Exportar
+        <span id="excelCount" style="background:#bbf7d0;color:#166534;font-size:.72rem;font-weight:800;padding:2px 7px;border-radius:999px;">0</span>
+      </button>
+
+      <!-- Toggle de vista -->
+      <div class="view-toggle-wrap" title="Cambiar vista">
+        <button id="btnGrid"  onclick="setView('grid')"  class="view-btn" title="Vista tarjetas">
+          <i class="fa-solid fa-grip"></i>
+        </button>
+        <button id="btnTable" onclick="setView('table')" class="view-btn" title="Vista tabla">
+          <i class="fa-solid fa-table-list"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     BARRA DE ESTADÍSTICAS — Modern
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
+    <span style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:12px;font-size:.78rem;font-weight:600;background:linear-gradient(135deg,#f0fdf4,#dcfce7);color:#166534;border:1.5px solid #86efac;box-shadow:0 2px 6px rgba(22,163,74,.1);">
+      <i class="fa-solid fa-database" style="font-size:.72rem;"></i>
+      Total: <strong id="statTotal">0</strong>
+    </span>
+    <span style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:12px;font-size:.78rem;font-weight:600;background:linear-gradient(135deg,#eff6ff,#dbeafe);color:#1d4ed8;border:1.5px solid #93c5fd;box-shadow:0 2px 6px rgba(29,78,216,.08);">
+      <i class="fa-solid fa-filter" style="font-size:.72rem;"></i>
+      Filtrados: <strong id="statFiltered">0</strong>
+    </span>
+    <span style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:12px;font-size:.78rem;font-weight:600;background:linear-gradient(135deg,#fefce8,#fef9c3);color:#92400e;border:1.5px solid #fcd34d;box-shadow:0 2px 6px rgba(146,64,14,.08);">
+      <i class="fa-solid fa-tags" style="font-size:.72rem;"></i>
+      Tipos: <strong id="statTypes">0</strong>
+    </span>
+    <span style="display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:12px;font-size:.78rem;font-weight:600;background:linear-gradient(135deg,#fdf4ff,#f3e8ff);color:#7e22ce;border:1.5px solid #c084fc;box-shadow:0 2px 6px rgba(126,34,206,.08);">
+      <i class="fa-solid fa-sitemap" style="font-size:.72rem;"></i>
+      Comunidades: <strong id="statCommunities">0</strong>
+    </span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     CONTENIDO PRINCIPAL
+══════════════════════════════════════════════════════════════════════════ -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 pb-12">
+
+  <!-- Empty state -->
+  <div id="emptyState" class="hidden">
+    <div class="text-center py-24 fade-in">
+      <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-green-50 flex items-center justify-center">
+        <i class="fa-solid fa-inbox" style="font-size:2.5rem;color:#86efac;"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-slate-700 mb-2">Repositorio vacío</h2>
+      <p class="text-slate-500 mb-8 max-w-md mx-auto">
+        Aún no se han descargado datos del repositorio institucional.
+        Presiona el botón para iniciar la sincronización.
+      </p>
+      <button onclick="handleSyncBtn()"
+        class="inline-flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-8 py-3.5 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200">
+        <i class="fa-solid fa-rotate"></i>
+        Sincronizar repositorio ahora
+      </button>
+    </div>
+  </div>
+
+  <!-- Sin resultados de búsqueda -->
+  <div id="noResults" class="hidden text-center py-16 fade-in">
+    <div class="text-4xl mb-4"><i class="fa-solid fa-magnifying-glass"></i></div>
+    <h3 class="text-lg font-semibold text-slate-600 mb-2">Sin resultados</h3>
+    <p class="text-slate-400 text-sm">Intenta con otros términos o ajusta los filtros.</p>
+    <button onclick="clearFilters()" class="mt-4 text-green-700 hover:underline text-sm font-medium">Limpiar filtros</button>
+  </div>
+
+  <!-- Vista tarjetas -->
+  <div id="gridView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-1"></div>
+
+  <!-- Vista tabla -->
+  <div id="tableView" class="hidden mt-1 overflow-x-auto rounded-2xl shadow-sm border border-slate-100">
+    <table class="w-full bg-white text-sm">
+      <thead>
+        <tr class="bg-gradient-to-r from-green-800 to-green-700 text-white text-left">
+          <th class="px-5 py-3.5 font-semibold rounded-tl-2xl">Título</th>
+          <th class="px-4 py-3.5 font-semibold">Autores</th>
+          <th class="px-4 py-3.5 font-semibold whitespace-nowrap">Año</th>
+          <th class="px-4 py-3.5 font-semibold">Tipo</th>
+          <th class="px-4 py-3.5 font-semibold">Colección</th>
+          <th class="px-4 py-3.5 font-semibold rounded-tr-2xl">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ── PAGINACIÓN MODERNA ── -->
+  <div id="paginationWrap" class="hidden mt-6">
+    <!-- Info de resultados -->
+    <p id="paginationInfo" class="text-center text-xs text-slate-400 mb-3"></p>
+    <!-- Controles -->
+    <div id="pagination" class="flex justify-center items-center gap-1.5 flex-wrap"></div>
+  </div>
+</main>
+</div><!-- /#explorerView -->
+<!-- ══════════════════════════════════════════════════════════════════════════
+     DASHBOARD ANALYTICS
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="dashboardView" class="max-w-7xl mx-auto px-4 sm:px-6 pb-12 pt-6" style="display:none;">
+
+  <!-- Cabecera del dashboard — Modern -->
+  <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:28px;">
+    <div style="display:flex;flex-col sm:flex-row;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div>
+        <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#166534,#22c55e);display:flex;align-items:center;justify-content:center;">
+            <i class="fa-solid fa-chart-pie" style="color:#fff;font-size:.9rem;"></i>
+          </div>
+          <h2 style="font-size:1.3rem;font-weight:800;color:#0f172a;letter-spacing:-.025em;">Dashboard del Repositorio</h2>
+        </div>
+        <p style="font-size:.82rem;color:#64748b;font-weight:500;padding-left:46px;">Visualización dinámica de tesis y publicaciones institucionales</p>
+      </div>
+      <div class="dash-filters-bar">
+      <!-- Filtro año desde -->
+      <div class="flex items-center gap-2">
+        <label class="dash-label">Desde</label>
+        <select id="dashYearFrom" class="dash-filter" onchange="renderDashboard()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="dash-filter-sep"></div>
+      <div class="flex items-center gap-2">
+        <label class="dash-label">Hasta</label>
+        <select id="dashYearTo" class="dash-filter" onchange="renderDashboard()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="dash-filter-sep"></div>
+      <!-- Filtro comunidad -->
+      <select id="dashCommunity" class="dash-filter" onchange="renderDashboard()" style="min-width:180px;">
+        <option value="">Todas las comunidades</option>
+      </select>
+      <div class="dash-filter-sep"></div>
+      <!-- Botón refrescar -->
+      <button id="btnRefreshDash" onclick="renderDashboard()">
+        <i class="fa-solid fa-rotate" style="font-size:.8rem;"></i>
+        Actualizar
+      </button>
+    </div>
+    </div>
+  </div>
+
+  <!-- KPIs — Modern -->
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:28px;"
+       class="sm:grid-cols-4" id="kpiGrid">
+
+    <!-- KPI Total -->
+    <div class="kpi-card" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 60%,#bbf7d0 100%);border:1.5px solid #86efac;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+        <div>
+          <div class="kpi-value" style="color:#15803d;" id="kpiTotal">0</div>
+          <div class="kpi-label" style="color:#166534;">Total registros</div>
+          <div class="kpi-delta" style="color:#22c55e;" id="kpiTotalSub">en el repositorio</div>
+        </div>
+        <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#166534,#22c55e);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(22,101,52,.35);">
+          <i class="fa-solid fa-database" style="color:#fff;font-size:1.1rem;"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Tipos -->
+    <div class="kpi-card" style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 60%,#bfdbfe 100%);border:1.5px solid #93c5fd;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+        <div>
+          <div class="kpi-value" style="color:#1d4ed8;" id="kpiTypes">0</div>
+          <div class="kpi-label" style="color:#1e40af;">Tipos distintos</div>
+          <div class="kpi-delta" style="color:#3b82f6;" id="kpiTypeTop">—</div>
+        </div>
+        <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#1d4ed8,#60a5fa);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(29,78,216,.35);">
+          <i class="fa-solid fa-file-lines" style="color:#fff;font-size:1.1rem;"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Comunidades -->
+    <div class="kpi-card" style="background:linear-gradient(135deg,#fdf4ff 0%,#f3e8ff 60%,#e9d5ff 100%);border:1.5px solid #c084fc;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+        <div>
+          <div class="kpi-value" style="color:#7c3aed;" id="kpiCommunities">0</div>
+          <div class="kpi-label" style="color:#6d28d9;">Comunidades</div>
+          <div class="kpi-delta" style="color:#a855f7;" id="kpiCommunityTop">—</div>
+        </div>
+        <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#c084fc);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(124,58,237,.35);">
+          <i class="fa-solid fa-building-columns" style="color:#fff;font-size:1.1rem;"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Años -->
+    <div class="kpi-card" style="background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 60%,#fde68a 100%);border:1.5px solid #fcd34d;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+        <div>
+          <div class="kpi-value" style="color:#d97706;" id="kpiYears">0</div>
+          <div class="kpi-label" style="color:#b45309;">Años con publicaciones</div>
+          <div class="kpi-delta" style="color:#f59e0b;" id="kpiYearRange">—</div>
+        </div>
+        <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#d97706,#fbbf24);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(217,119,6,.35);">
+          <i class="fa-solid fa-calendar-days" style="color:#fff;font-size:1.1rem;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fila 1: Evolución temporal (ancho completo) -->
+  <div class="chart-card mb-5">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:14px 20px;margin:-22px -24px 20px -24px;border-radius:20px 20px 0 0;background:linear-gradient(135deg,#f0fdf4,#f8fafc);border-bottom:1.5px solid #e2f5e8;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#166534,#22c55e);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(22,101,52,.3);">
+          <i class="fa-solid fa-chart-line" style="color:#fff;font-size:.85rem;"></i>
+        </div>
+        <div>
+          <div class="chart-title" style="background:none;padding:0;"><span style="background:none;color:#0f172a;font-size:.92rem;">Evolución temporal de publicaciones</span></div>
+          <div class="chart-subtitle" style="padding-left:0;">Número de tesis y publicaciones por año</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:10px;background:#fff;border:1.5px solid #bbf7d0;">
+        <label class="dash-label">Agrupar</label>
+        <select id="dashYearGroup" class="dash-filter" onchange="renderYearChart()" style="min-width:130px;">
+          <option value="all">Todos los tipos</option>
+          <option value="stacked">Por tipo (apilado)</option>
+        </select>
+      </div>
+    </div>
+    <div style="position:relative; height:280px;">
+      <canvas id="chartYear"></canvas>
+    </div>
+  </div>
+
+  <!-- Fila 2: Tipo + Comunidad -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+
+    <!-- Gráfico por tipo (donut) -->
+    <div class="chart-card">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 18px;margin:-22px -24px 18px -24px;border-radius:20px 20px 0 0;background:linear-gradient(135deg,#eff6ff,#f8fafc);border-bottom:1.5px solid #dbeafe;">
+        <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#1d4ed8,#60a5fa);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(29,78,216,.3);">
+          <i class="fa-solid fa-graduation-cap" style="color:#fff;font-size:.82rem;"></i>
+        </div>
+        <div>
+          <div class="chart-title" style="background:none;padding:0;"><span style="background:none;color:#0f172a;">Distribución por tipo</span></div>
+          <div class="chart-subtitle" style="padding-left:0;">Proporción de cada categoría en el repositorio</div>
+        </div>
+      </div>
+      <div class="flex flex-col sm:flex-row items-center gap-4">
+        <div style="position:relative; width:220px; height:220px; flex-shrink:0; margin:0 auto;">
+          <canvas id="chartType"></canvas>
+        </div>
+        <div id="typeLegend" class="flex-1 space-y-1.5 w-full"></div>
+      </div>
+    </div>
+
+    <!-- Gráfico por comunidad (barras horizontales) -->
+    <div class="chart-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 18px;margin:-22px -24px 18px -24px;border-radius:20px 20px 0 0;background:linear-gradient(135deg,#fdf4ff,#f8fafc);border-bottom:1.5px solid #e9d5ff;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#7c3aed,#c084fc);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(124,58,237,.3);">
+            <i class="fa-solid fa-building-columns" style="color:#fff;font-size:.82rem;"></i>
+          </div>
+          <div>
+            <div class="chart-title" style="background:none;padding:0;"><span style="background:none;color:#0f172a;">Publicaciones por comunidad</span></div>
+            <div class="chart-subtitle" style="padding-left:0;">Top comunidades con más registros</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:10px;background:#fff;border:1.5px solid #e9d5ff;">
+          <label class="dash-label">Mostrar</label>
+          <select id="dashCommunityTop" class="dash-filter" onchange="renderCommunityChart()">
+            <option value="10">Top 10</option>
+            <option value="15">Top 15</option>
+            <option value="20">Top 20</option>
+            <option value="0">Todas</option>
+          </select>
+        </div>
+      </div>
+      <div style="position:relative; height:260px; margin-top:8px;">
+        <canvas id="chartCommunity"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fila 3: Colecciones + Tabla top colecciones -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+
+    <!-- Gráfico por colección (barras horizontales) -->
+    <div class="chart-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 18px;margin:-22px -24px 18px -24px;border-radius:20px 20px 0 0;background:linear-gradient(135deg,#f0fdf4,#f8fafc);border-bottom:1.5px solid #bbf7d0;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#166534,#4ade80);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(22,101,52,.3);">
+            <i class="fa-solid fa-folder-open" style="color:#fff;font-size:.82rem;"></i>
+          </div>
+          <div>
+            <div class="chart-title" style="background:none;padding:0;"><span style="background:none;color:#0f172a;">Publicaciones por colección</span></div>
+            <div class="chart-subtitle" style="padding-left:0;">Top colecciones con más registros</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:10px;background:#fff;border:1.5px solid #bbf7d0;">
+          <label class="dash-label">Mostrar</label>
+          <select id="dashCollectionTop" class="dash-filter" onchange="renderCollectionChart()">
+            <option value="10">Top 10</option>
+            <option value="15">Top 15</option>
+            <option value="20">Top 20</option>
+            <option value="0">Todas</option>
+          </select>
+        </div>
+      </div>
+      <div style="position:relative; height:260px; margin-top:8px;">
+        <canvas id="chartCollection"></canvas>
+      </div>
+    </div>
+
+    <!-- Tabla ranking de colecciones -->
+    <div class="chart-card overflow-auto">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 18px;margin:-22px -24px 18px -24px;border-radius:20px 20px 0 0;background:linear-gradient(135deg,#fffbeb,#f8fafc);border-bottom:1.5px solid #fde68a;">
+        <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#d97706,#fbbf24);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(217,119,6,.3);">
+          <i class="fa-solid fa-trophy" style="color:#fff;font-size:.82rem;"></i>
+        </div>
+        <div>
+          <div class="chart-title" style="background:none;padding:0;"><span style="background:none;color:#0f172a;">Ranking de colecciones</span></div>
+          <div class="chart-subtitle" style="padding-left:0;">Colecciones ordenadas por número de publicaciones</div>
+        </div>
+      </div>
+      <table class="w-full top-table mt-2">
+        <thead>
+          <tr>
+            <th class="text-left">#</th>
+            <th class="text-left">Colección</th>
+            <th class="text-left">Comunidad</th>
+            <th class="text-right">Registros</th>
+            <th class="text-right">%</th>
+          </tr>
+        </thead>
+        <tbody id="tableTopCollections"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Fila 4: Mapa de calor año x tipo -->
+  <div class="chart-card mb-5">
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;margin:-22px -24px 20px -24px;border-radius:20px 20px 0 0;background:linear-gradient(135deg,#fff7ed,#f8fafc);border-bottom:1.5px solid #fed7aa;">
+      <div style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#ea580c,#fb923c);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(234,88,12,.3);">
+        <i class="fa-solid fa-fire" style="color:#fff;font-size:.85rem;"></i>
+      </div>
+      <div>
+        <div class="chart-title" style="background:none;padding:0;"><span style="background:none;color:#0f172a;">Mapa de calor: Año × Tipo de publicación</span></div>
+        <div class="chart-subtitle" style="padding-left:0;">Intensidad de publicaciones por combinación año-tipo</div>
+      </div>
+    </div>
+    <div style="position:relative; height:280px;">
+      <canvas id="chartHeatmap"></canvas>
+    </div>
+  </div>
+
+  <!-- Fila 5: Idioma + Tendencia últimos 5 años -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+    <!-- Gráfico por idioma -->
+    <div class="chart-card">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 18px;margin:-22px -24px 18px -24px;border-radius:20px 20px 0 0;background:linear-gradient(135deg,#f0f9ff,#f8fafc);border-bottom:1.5px solid #bae6fd;">
+        <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#0284c7,#38bdf8);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(2,132,199,.3);">
+          <i class="fa-solid fa-globe" style="color:#fff;font-size:.82rem;"></i>
+        </div>
+        <div>
+          <div class="chart-title" style="background:none;padding:0;"><span style="background:none;color:#0f172a;">Distribución por idioma</span></div>
+          <div class="chart-subtitle" style="padding-left:0;">Idioma de las publicaciones</div>
+        </div>
+      </div>
+      <div style="position:relative; height:220px; margin-top:8px;">
+        <canvas id="chartLanguage"></canvas>
+      </div>
+    </div>
+
+    <!-- Tendencia últimos N años (línea) -->
+    <div class="chart-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 18px;margin:-22px -24px 18px -24px;border-radius:20px 20px 0 0;background:linear-gradient(135deg,#f0fdf4,#f8fafc);border-bottom:1.5px solid #bbf7d0;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#059669,#34d399);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(5,150,105,.3);">
+            <i class="fa-solid fa-chart-line" style="color:#fff;font-size:.82rem;"></i>
+          </div>
+          <div>
+            <div class="chart-title" style="background:none;padding:0;"><span style="background:none;color:#0f172a;">Tendencia reciente</span></div>
+            <div class="chart-subtitle" style="padding-left:0;">Evolución en los últimos años por tipo principal</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:10px;background:#fff;border:1.5px solid #bbf7d0;">
+          <label class="dash-label">Período</label>
+          <select id="dashTrendYears" class="dash-filter" onchange="renderTrendChart()">
+            <option value="5">Últimos 5 años</option>
+            <option value="10">Últimos 10 años</option>
+            <option value="15">Últimos 15 años</option>
+          </select>
+        </div>
+      </div>
+      <div style="position:relative; height:220px; margin-top:8px;">
+        <canvas id="chartTrend"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#dashboardView -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     AUTORES VIEW
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="autoresView" class="max-w-7xl mx-auto px-4 sm:px-6 pb-12 pt-6" style="display:none;">
+
+  <!-- Encabezado -->
+  <div class="mb-6 fade-in">
+    <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+      <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-green-100 text-green-700">
+        <i class="fa-solid fa-user-graduate text-base"></i>
+      </span>
+      Análisis por Asesores
+    </h2>
+    <p class="text-slate-500 text-sm mt-1">Filtra y explora tesis por asesor y año de publicación</p>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card bg-white p-5 mb-6" style="position:relative;z-index:1;">
+    <div class="flex flex-wrap gap-4 items-end">
+      <div class="flex-1 min-w-[240px]">
+        <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+          <i class="fa-solid fa-chalkboard-user mr-1 text-green-600"></i>Asesor
+        </label>
+        <div class="adv-dropdown" id="advDropdownWrap">
+          <button type="button" class="adv-dropdown-btn" id="advDropdownBtn"
+            onclick="toggleAdvDropdown(event)">
+            <span class="adv-btn-label" id="advDropdownLabel">Todos los asesores</span>
+            <i class="fa-solid fa-chevron-down adv-btn-arrow"></i>
+          </button>
+          <!-- panel movido al body via JS -->
+        </div>
+        <input type="hidden" id="autoresFilterAdvisor" value="" />
+      </div>
+      <div class="flex-1 min-w-[160px]">
+        <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+          <i class="fa-solid fa-calendar-days mr-1 text-green-600"></i>Año
+        </label>
+        <select id="autoresFilterYear"
+          class="filter-select" style="width:100%;"
+          onchange="renderAutoresView()">
+          <option value="">Todos los años</option>
+        </select>
+      </div>
+      <div>
+        <button onclick="clearAutoresFilters()" title="Limpiar filtros"
+          style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:12px;border:1.5px solid #fecdd3;background:#fff5f5;color:#dc2626;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s cubic-bezier(.22,1,.36,1);white-space:nowrap;"
+          onmouseover="this.style.background='#fee2e2';this.style.borderColor='#fca5a5';this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.background='#fff5f5';this.style.borderColor='#fecdd3';this.style.transform='translateY(0)'">
+          <i class="fa-solid fa-xmark"></i> Limpiar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tarjetas de estadísticas -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 fade-in" style="animation-delay:.1s">
+    <div class="card bg-white p-4">
+      <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Tesis encontradas</div>
+      <div id="autoresStat1" class="text-2xl font-extrabold text-slate-800">—</div>
+    </div>
+    <div class="card bg-white p-4">
+      <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Asesores únicos</div>
+      <div id="autoresStat2" class="text-2xl font-extrabold text-green-600">—</div>
+    </div>
+    <div class="card bg-white p-4">
+      <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Años cubiertos</div>
+      <div id="autoresStat3" class="text-2xl font-extrabold text-blue-600">—</div>
+    </div>
+    <div class="card bg-white p-4">
+      <div class="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">Promedio/asesor</div>
+      <div id="autoresStat4" class="text-2xl font-extrabold text-purple-600">—</div>
+    </div>
+  </div>
+
+  <!-- Gráficos -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 fade-in" style="animation-delay:.15s">
+    <div class="card bg-white p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+          <i class="fa-solid fa-ranking-star text-green-600"></i>
+          Top 15 Asesores por N° de Tesis
+        </h3>
+      </div>
+      <div style="position:relative; height:320px;">
+        <canvas id="chartAutoresBar"></canvas>
+      </div>
+    </div>
+    <div class="card bg-white p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+          <i class="fa-solid fa-chart-pie text-green-600"></i>
+          Distribución por Tipo de Tesis
+        </h3>
+      </div>
+      <div style="position:relative; height:320px;">
+        <canvas id="chartAutoresPie"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gráfico de Línea -->
+  <div class="card bg-white p-5 mb-6 fade-in" style="animation-delay:.2s">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+        <i class="fa-solid fa-chart-line text-green-600"></i>
+        Evolución de Tesis por Año
+      </h3>
+    </div>
+    <div style="position:relative; height:220px;">
+      <canvas id="chartAutoresLine"></canvas>
+    </div>
+  </div>
+
+  <!-- Tabla: Asesorados por Año (reemplaza gráfico de barras) -->
+  <div class="card bg-white p-5 mb-6 fade-in" style="animation-delay:.22s">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#0284c7,#38bdf8);flex-shrink:0;">
+          <i class="fa-solid fa-calendar-check" style="color:#fff;font-size:.75rem;"></i>
+        </span>
+        Asesorados por Año
+        <span style="font-size:.7rem;font-weight:500;color:#94a3b8;margin-left:4px;">· resumen por año</span>
+      </h3>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label style="font-size:.7rem;font-weight:700;color:#64748b;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;">Mostrar</label>
+        <select id="autoresYearsRange" class="filter-select" style="min-width:110px;" onchange="renderAutoresChartYears(null)">
+          <option value="10">Últimos 10</option>
+          <option value="15" selected>Últimos 15</option>
+          <option value="20">Últimos 20</option>
+          <option value="0">Todos</option>
+        </select>
+      </div>
+    </div>
+    <!-- Tabla de datos por año -->
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+        <thead>
+          <tr style="background:linear-gradient(90deg,#f0f9ff,#e0f2fe);border-bottom:2px solid #bae6fd;">
+            <th style="padding:9px 16px;text-align:left;font-weight:700;color:#0369a1;letter-spacing:.04em;text-transform:uppercase;font-size:.68rem;">#</th>
+            <th style="padding:9px 16px;text-align:left;font-weight:700;color:#0369a1;letter-spacing:.04em;text-transform:uppercase;font-size:.68rem;">Año</th>
+            <th style="padding:9px 16px;text-align:center;font-weight:700;color:#0369a1;letter-spacing:.04em;text-transform:uppercase;font-size:.68rem;">Cantidad</th>
+            <th style="padding:9px 16px;text-align:left;font-weight:700;color:#0369a1;letter-spacing:.04em;text-transform:uppercase;font-size:.68rem;">Participación</th>
+          </tr>
+        </thead>
+        <tbody id="autoresYearsTableBody">
+          <tr><td colspan="4" style="padding:24px;text-align:center;color:#94a3b8;font-size:.8rem;">Cargando datos…</td></tr>
+        </tbody>
+        <tfoot id="autoresYearsTableFoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tabla de Listado -->
+  <div class="card bg-white fade-in" style="animation-delay:.25s">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+      <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+        <i class="fa-solid fa-table-list text-green-600"></i>
+        Listado de Tesis
+        <span id="autoresTableCount" class="ml-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold">0</span>
+      </h3>
+      <div class="flex items-center gap-2">
+        <input id="autoresSearch" type="text" placeholder="Buscar en resultados…"
+          class="filter-select" style="width:176px;"
+          oninput="renderAutoresTable()" />
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="bg-slate-50 text-slate-500 uppercase tracking-wide text-[0.65rem]">
+            <th class="px-4 py-3 text-left font-semibold">#</th>
+            <th class="px-4 py-3 text-left font-semibold">Título</th>
+            <th class="px-4 py-3 text-left font-semibold">Autor(es)</th>
+            <th class="px-4 py-3 text-left font-semibold">Asesor</th>
+            <th class="px-4 py-3 text-left font-semibold">Año</th>
+            <th class="px-4 py-3 text-left font-semibold">Tipo</th>
+            <th class="px-4 py-3 text-left font-semibold">Acción</th>
+          </tr>
+        </thead>
+        <tbody id="autoresTableBody"></tbody>
+      </table>
+    </div>
+    <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100">
+      <span id="autoresPagInfo" class="text-xs text-slate-400"></span>
+      <div class="flex gap-1">
+        <button id="autoresPrevBtn" onclick="autoresChangePage(-1)"
+          class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <button id="autoresNextBtn" onclick="autoresChangePage(1)"
+          class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#autoresView -->
+
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL DE DETALLE
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+     onclick="closeModal(event)">
+  <div class="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto fade-in">
+    <!-- Header del modal -->
+    <div class="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-start justify-between gap-3 rounded-t-3xl sm:rounded-t-2xl z-10">
+      <h2 id="modalTitle" class="text-base font-bold text-slate-800 leading-snug pr-4 clamp-3"></h2>
+      <button onclick="closeModal()"
+        class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition text-lg leading-none"><i class="fa fa-times"></i></button>
+    </div>
+    <!-- Cuerpo del modal -->
+    <div id="modalBody" class="px-6 py-5 space-y-4"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════════════════════════════════════════ -->
+<script>
+// ─── Estado global ─────────────────────────────────────────────────────────
+let allRecords  = [];  // todos los registros crudos del servidor
+let validRecords = []; // solo registros con tipo definido (sin 'Sin tipo')
+let filtered    = [];
+let curPage     = 1;
+const PER_PAGE  = 24;
+let view        = 'grid';
+let syncStatus  = 'idle';   // idle | syncing | paused
+let filterTimer = null;
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', init);
+
+async function init() {
+  renderBtnSync();
+  await loadData();
+}
+
+async function loadData() {
+  try {
+    const [dr, mr] = await Promise.all([fetch('/data'), fetch('/metadata')]);
+    allRecords = await dr.json();
+    validRecords = allRecords.filter(r => r.type && r.type.trim() !== '');
+    const meta = await mr.json();
+    syncStatus = meta?.syncState?.status || 'idle';
+
+    updateMetaBar(meta);
+    renderBtnSync();
+
+    if (!Array.isArray(validRecords) || validRecords.length === 0) {
+      showEmpty(true);
+    } else {
+      showEmpty(false);
+      populateFilters();
+      applyFilters();
+    }
+  } catch (e) {
+    console.error('Error cargando datos:', e);
+  }
+}
+
+// ─── Empty / no-results state ───────────────────────────────────────────────
+function showEmpty(show) {
+  document.getElementById('emptyState').classList.toggle('hidden', !show);
+  document.getElementById('gridView').classList.toggle('hidden', show);
+  document.getElementById('tableView').classList.toggle('hidden', true);
+  document.getElementById('paginationWrap').classList.toggle('hidden', show);
+}
+
+// ─── Meta bar ────────────────────────────────────────────────────────────────
+function updateMetaBar(meta) {
+  const fmt = d => d ? new Date(d).toLocaleString('es-PE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+  document.getElementById('metaLastSync').textContent = fmt(meta.lastSync);
+  document.getElementById('metaTotal').textContent    = (meta.total || 0).toLocaleString('es-PE');
+  document.getElementById('metaNew').textContent      = (meta.newRecords || 0).toLocaleString('es-PE');
+  document.getElementById('metaUpd').textContent      = (meta.updatedRecords || 0).toLocaleString('es-PE');
+
+  const lbl = document.getElementById('metaStateLabel');
+  const st  = meta?.syncState?.status;
+  if (st === 'syncing') {
+    lbl.innerHTML = '<span class="text-yellow-300"><i class="fa-solid fa-bolt"></i> Sincronizando…</span>';
+  } else if (st === 'paused') {
+    const p = meta.syncState;
+    lbl.innerHTML = `<span class="text-yellow-200"><i class="fa-solid fa-pause"></i> Pausado — pág. ${p.currentPage || 0}/${p.totalPages || '?'} · ${(p.processed||0).toLocaleString()} registros</span>`;
+  } else {
+    lbl.textContent = '';
+  }
+}
+
+// ─── Botón Sync: 3 estados ───────────────────────────────────────────────────
+function renderBtnSync() {
+  const btn = document.getElementById('btnSync');
+  if (syncStatus === 'syncing') {
+    btn.innerHTML = `<i class="fa-solid fa-pause"></i> Pausar`;
+    btn.className = 'btn-sync whitespace-nowrap';
+    btn.style.background = 'linear-gradient(135deg, rgba(239,68,68,.3), rgba(220,38,38,.2))';
+    btn.style.borderColor = 'rgba(252,165,165,.5)';
+  } else if (syncStatus === 'paused') {
+    btn.innerHTML = `<i class="fa-solid fa-play"></i> Continuar`;
+    btn.className = 'btn-sync whitespace-nowrap';
+    btn.style.background = 'linear-gradient(135deg, rgba(251,191,36,.3), rgba(245,158,11,.2))';
+    btn.style.borderColor = 'rgba(253,230,138,.5)';
+  } else {
+    btn.innerHTML = `<i class="fa-solid fa-rotate"></i> Sincronizar datos`;
+    btn.className = 'btn-sync whitespace-nowrap';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+  }
+}
+
+function handleSyncBtn() {
+  if (syncStatus === 'syncing') stopSync();
+  else startSync();
+}
+
+// ─── Iniciar / Continuar sync ────────────────────────────────────────────────
+function startSync() {
+  syncStatus = 'syncing';
+  renderBtnSync();
+  const panel = document.getElementById('progressPanel');
+  panel.classList.remove('hidden');
+  document.getElementById('progressMsg').textContent = 'Conectando con DSpace…';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('pNew').textContent = '0';
+  document.getElementById('pUpd').textContent = '0';
+  document.getElementById('pPct').textContent = '0%';
+
+  fetch('/sync/start', { method: 'POST' })
+    .then(resp => {
+      const reader  = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer    = '';
+
+      function pump() {
+        reader.read().then(({ done, value }) => {
+          if (done) return;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try { handleSyncEvent(JSON.parse(line.slice(6))); } catch (_) {}
+            }
+          }
+          pump();
+        });
+      }
+      pump();
+    })
+    .catch(e => {
+      console.error('SSE error:', e);
+      syncStatus = 'idle';
+      renderBtnSync();
+      document.getElementById('progressPanel').classList.add('hidden');
+    });
+}
+
+// ─── Detener sync ────────────────────────────────────────────────────────────
+async function stopSync() {
+  try { await fetch('/sync/stop', { method: 'POST' }); } catch (_) {}
+  syncStatus = 'paused';
+  renderBtnSync();
+  document.getElementById('progressPanel').classList.add('hidden');
+  document.getElementById('metaStateLabel').innerHTML = '<span class="text-yellow-200">⏸ Pausado</span>';
+}
+
+// ─── Manejar eventos SSE ─────────────────────────────────────────────────────
+async function handleSyncEvent(evt) {
+  if (evt.type === 'start') {
+    document.getElementById('progressMsg').textContent = evt.message;
+  }
+
+  if (evt.type === 'progress') {
+    document.getElementById('progressMsg').textContent = evt.message;
+    document.getElementById('progressBar').style.width = (evt.pct || 0) + '%';
+    document.getElementById('pNew').textContent  = (evt.newCount  || 0).toLocaleString('es-PE');
+    document.getElementById('pUpd').textContent  = (evt.updCount  || 0).toLocaleString('es-PE');
+    document.getElementById('pPct').textContent  = (evt.pct || 0) + '%';
+    // Recargar datos en cada evento de progreso (actualización en tiempo real)
+    await reloadData(false);
+  }
+
+  if (evt.type === 'done') {
+    syncStatus = 'idle';
+    renderBtnSync();
+    document.getElementById('progressPanel').classList.add('hidden');
+    await reloadData(true);
+    const meta = await fetch('/metadata').then(r => r.json());
+    updateMetaBar(meta);
+    showToast(evt.message, 'success');
+  }
+
+  if (evt.type === 'paused') {
+    syncStatus = 'paused';
+    renderBtnSync();
+    document.getElementById('progressPanel').classList.add('hidden');
+    await reloadData(false);
+    const meta = await fetch('/metadata').then(r => r.json());
+    updateMetaBar(meta);
+  }
+
+  if (evt.type === 'warn') {
+    document.getElementById('progressMsg').textContent = evt.message;
+  }
+  if (evt.type === 'error') {
+    document.getElementById('progressMsg').textContent = evt.message;
+    showToast(evt.message, 'error');
+  }
+}
+
+// ─── Recargar datos desde servidor ───────────────────────────────────────────
+async function reloadData(full = true) {
+  try {
+    const r = await fetch('/data');
+    allRecords = await r.json();
+    validRecords = allRecords.filter(r => r.type && r.type.trim() !== '');
+    if (validRecords.length > 0) {
+      showEmpty(false);
+      // Siempre repoblar filtros para incluir nuevas opciones,
+      // preservando la selección actual del usuario
+      populateFilters();
+      applyFilters();
+    }
+    document.getElementById('statTotal').textContent = validRecords.length.toLocaleString('es-PE');
+  } catch (_) {}
+}
+
+// ─── Poblar filtros ──────────────────────────────────────────────────────────
+function populateFilters() {
+  const types  = [...new Set(validRecords.map(r => r.type).filter(Boolean))].sort();
+  const comms  = [...new Set(validRecords.map(r => r.community).filter(Boolean))].sort();
+  const cols   = [...new Set(validRecords.map(r => r.collection).filter(Boolean))].sort();
+  const years  = [...new Set(validRecords.map(r => (r.date||'').slice(0,4)).filter(y => /^\d{4}$/.test(y)))].sort().reverse();
+
+  fillSelect('filterType',       types, 'Todos los tipos');
+  fillSelect('filterCommunity',  comms, 'Todas las comunidades');
+  fillSelect('filterCollection', cols,  'Todas las colecciones');
+  fillSelect('filterYear',       years, 'Todos los años');
+
+  document.getElementById('statTypes').textContent       = types.length.toLocaleString('es-PE');
+  document.getElementById('statCommunities').textContent = comms.length.toLocaleString('es-PE');
+
+  // Poblar filtros del dashboard
+  if (typeof populateDashFilters === 'function') populateDashFilters();
+  // Poblar filtros de autores
+  if (typeof populateAutoresFilters === 'function') populateAutoresFilters();
+}
+
+function fillSelect(id, values, placeholder) {
+  const sel = document.getElementById(id);
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  values.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    if (v === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+// ─── Filtros y búsqueda ──────────────────────────────────────────────────────
+function debounceFilter() {
+  clearTimeout(filterTimer);
+  filterTimer = setTimeout(applyFilters, 220);
+}
+
+function applyFilters() {
+  const q    = document.getElementById('searchInput').value.toLowerCase().trim();
+  const type = document.getElementById('filterType').value;
+  const comm = document.getElementById('filterCommunity').value;
+  const col  = document.getElementById('filterCollection').value;
+  const year = document.getElementById('filterYear').value;
+  const sort = document.getElementById('sortBy').value;
+
+  filtered = validRecords.filter(r => {
+    if (type && r.type !== type) return false;
+    if (comm && r.community !== comm) return false;
+    if (col  && r.collection !== col)  return false;
+    if (year && !(r.date || '').startsWith(year)) return false;
+    if (q) {
+      const hay = `${r.title} ${r.authors} ${r.abstract} ${r.topics}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Ordenar
+  filtered.sort((a, b) => {
+    if (sort === 'date_desc') return (b.date||'').localeCompare(a.date||'');
+    if (sort === 'date_asc')  return (a.date||'').localeCompare(b.date||'');
+    if (sort === 'title_az')  return (a.title||'').localeCompare(b.title||'');
+    if (sort === 'title_za')  return (b.title||'').localeCompare(a.title||'');
+    return 0;
+  });
+
+  curPage = 1;
+  updateStats();
+  renderPage();
+
+  // No-results
+  const noR = document.getElementById('noResults');
+  noR.classList.toggle('hidden', filtered.length > 0 || validRecords.length === 0);
+}
+
+function clearFilters() {
+  document.getElementById('searchInput').value       = '';
+  document.getElementById('filterType').value        = '';
+  document.getElementById('filterCommunity').value   = '';
+  document.getElementById('filterCollection').value  = '';
+  document.getElementById('filterYear').value        = '';
+  document.getElementById('sortBy').value            = 'date_desc';
+  applyFilters();
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent    = validRecords.length.toLocaleString('es-PE');
+  document.getElementById('statFiltered').textContent = filtered.length.toLocaleString('es-PE');
+  // Actualizar contador del botón Excel
+  const ec = document.getElementById('excelCount');
+  if (ec) ec.textContent = filtered.length.toLocaleString('es-PE');
+}
+
+// ─── Renderizado ─────────────────────────────────────────────────────────────
+function renderPage() {
+  const start = (curPage - 1) * PER_PAGE;
+  const slice = filtered.slice(start, start + PER_PAGE);
+
+  if (view === 'grid') renderGrid(slice);
+  else                 renderTable(slice);
+
+  renderPagination();
+}
+
+// ── Vista tarjetas ────────────────────────────────────────────────────────────
+// ── SVG placeholder cuando no hay miniatura ───────────────────────────────
+function thumbPlaceholderSVG(type) {
+  const colorMap = {
+    'Tesis de Pregrado':  ['dbeafe','2563eb'],
+    'Tesis de Maestría':  ['ede9fe','7c3aed'],
+    'Tesis Doctoral':     ['e0e7ff','4338ca'],
+    'Artículo Científico':['d1fae5','059669'],
+    'Libro':              ['fef3c7','d97706'],
+    'Informe':            ['ffedd5','ea580c'],
+    'Conferencia':        ['fce7f3','db2777'],
+  };
+  const color = colorMap[type] || ['f1f5f9','64748b'];
+  const icon  = encodeURIComponent(typeIcon(type));
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='200' viewBox='0 0 160 200'%3E%3Crect width='160' height='200' rx='8' fill='%23${color[0]}'/%3E%3Ctext x='80' y='90' font-size='56' text-anchor='middle' dominant-baseline='middle'%3E${icon}%3C/text%3E%3Crect x='20' y='130' width='120' height='6' rx='3' fill='%23${color[1]}' opacity='.25'/%3E%3Crect x='30' y='144' width='100' height='5' rx='2.5' fill='%23${color[1]}' opacity='.15'/%3E%3C/svg%3E`;
+}
+
+function renderGrid(items) {
+  const c = document.getElementById('gridView');
+  c.innerHTML = '';
+  if (!items.length) return;
+
+  items.forEach((r, i) => {
+    const card = document.createElement('article');
+    card.className = 'card bg-white rounded-2xl overflow-hidden fade-in flex flex-col';
+    card.style.animationDelay = `${i * 0.03}s`;
+
+    const year        = (r.date || '').slice(0, 4);
+    const thumbSrc    = r.uuid ? `/thumb/${r.uuid}` : '';
+    const placeholder = thumbPlaceholderSVG(r.type);
+    const btnId       = `btn-pdf-${r.uuid || i}`;
+    const rJson       = JSON.stringify(r).replace(/"/g, '&quot;');
+
+    card.innerHTML = `
+      <!-- ── Área miniatura (clickable → modal) ── -->
+      <div class="w-full bg-slate-50 flex items-center justify-center cursor-pointer overflow-hidden border-b border-slate-100"
+           style="height:190px" onclick="openModal(${rJson})">
+        <img
+          src="${thumbSrc || placeholder}"
+          alt="Miniatura"
+          loading="lazy"
+          class="h-full object-contain transition-transform duration-400 hover:scale-105 p-2"
+          style="max-width:140px"
+          onerror="this.onerror=null;this.src='${placeholder}'"
+        />
+      </div>
+
+      <!-- ── Cabecera badges ── -->
+      <div class="flex items-center justify-between px-4 pt-3">
+        <span class="badge ${typeBadge(r.type)} text-xs">
+          ${typeIcon(r.type)} ${esc(r.type) || 'Sin tipo'}
+        </span>
+        <span class="text-xs font-bold text-slate-400">${year || '—'}</span>
+      </div>
+
+      <!-- ── Contenido ── -->
+      <div class="flex flex-col gap-2 px-4 pb-4 pt-2 flex-1">
+        <h3 class="font-semibold text-slate-800 text-sm leading-snug clamp-3 cursor-pointer hover:text-green-700 transition-colors"
+            onclick="openModal(${rJson})">
+          ${esc(r.title) || '<span class="text-slate-400 italic">Sin título</span>'}
+        </h3>
+        <p class="text-xs text-slate-500 clamp-2">
+          ${r.authors
+            ? `<span class="font-medium text-slate-600"><i class="fa-solid fa-pen-nib" style="font-size:.7rem;margin-right:.25rem;opacity:.7;"></i>${esc(r.authors)}</span>`
+            : '<span class="text-slate-300 italic">Autor desconocido</span>'}
+        </p>
+        ${r.collection ? `<div class="flex items-center gap-1 text-xs text-emerald-700 font-medium">
+          <i class="fa-solid fa-folder-open" style="font-size:.75rem;flex-shrink:0;"></i>
+          <span class="truncate">${esc(r.collection)}</span>
+        </div>` : ''}
+        ${r.abstract ? `<p class="text-xs text-slate-400 clamp-2 border-t border-slate-100 pt-2">${esc(r.abstract)}</p>` : ''}
+
+        <!-- ── Botón único: Ver PDF ── -->
+        <div class="mt-auto pt-3">
+          ${r.uuid ? `
+          <button id="${btnId}"
+            onclick="event.stopPropagation();openPdfNewTab('${r.uuid}','${btnId}')"
+            class="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold text-white
+                   bg-gradient-to-r from-green-700 to-emerald-600 hover:from-green-800 hover:to-emerald-700
+                   shadow-sm hover:shadow-md transition-all duration-200 active:scale-95">
+            <i class="fa-solid fa-file-pdf" style="font-size:.85rem;"></i>
+            Ver PDF
+            <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:.72rem;opacity:.8;"></i>
+          </button>` : `
+          <div class="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold
+                      text-slate-400 bg-slate-100 border border-dashed border-slate-200 cursor-not-allowed">
+            <i class="fa-solid fa-ban" style="font-size:.85rem;"></i>
+            Sin PDF disponible
+          </div>`}
+        </div>
+      </div>
+    `;
+    c.appendChild(card);
+  });
+}
+
+
+// ── Vista tabla ───────────────────────────────────────────────────────────────
+function renderTable(items) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  if (!items.length) return;
+
+  items.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.className = `${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} hover:bg-green-50/50 transition-colors`;
+    const btnId = `tbl-pdf-${r.uuid || i}`;
+    const rJson = JSON.stringify(r).replace(/"/g, '&quot;');
+    tr.innerHTML = `
+      <td class="px-5 py-3.5 max-w-xs cursor-pointer" onclick="openModal(${rJson})">
+        <p class="font-medium text-slate-800 text-sm clamp-2 hover:text-green-700 transition-colors">${esc(r.title) || '—'}</p>
+      </td>
+      <td class="px-4 py-3.5 max-w-[180px]">
+        <p class="text-xs text-slate-500 clamp-2">${esc(r.authors) || '—'}</p>
+      </td>
+      <td class="px-4 py-3.5 text-xs text-slate-500 whitespace-nowrap">${(r.date||'').slice(0,4) || '—'}</td>
+      <td class="px-4 py-3.5">
+        <span class="badge ${typeBadge(r.type)}">${esc(r.type) || '—'}</span>
+      </td>
+      <td class="px-4 py-3.5 max-w-[160px]">
+        <p class="text-xs text-slate-500 clamp-2">${esc(r.collection) || '—'}</p>
+      </td>
+      <td class="px-4 py-3.5">
+        ${r.uuid ? `
+        <button id="${btnId}"
+          onclick="openPdfNewTab('${r.uuid}','${btnId}')"
+          class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white
+                 bg-gradient-to-r from-green-700 to-emerald-600 hover:from-green-800 hover:to-emerald-700
+                 shadow-sm hover:shadow transition-all duration-150 active:scale-95 whitespace-nowrap">
+          <i class="fa-solid fa-file-pdf" style="font-size:.8rem;"></i>
+          Ver PDF
+          <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:.68rem;opacity:.7;"></i>
+        </button>` : '<span class="text-xs text-slate-300">—</span>'}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+
+// ─── Paginación moderna ──────────────────────────────────────────────────────
+function renderPagination() {
+  const total = Math.ceil(filtered.length / PER_PAGE);
+  const wrap  = document.getElementById('paginationWrap');
+  const info  = document.getElementById('paginationInfo');
+  const pg    = document.getElementById('pagination');
+
+  if (filtered.length === 0) { wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+
+  const start = (curPage - 1) * PER_PAGE + 1;
+  const end   = Math.min(curPage * PER_PAGE, filtered.length);
+  info.textContent = `Mostrando ${start.toLocaleString('es-PE')}–${end.toLocaleString('es-PE')} de ${filtered.length.toLocaleString('es-PE')} documentos`;
+
+  pg.innerHTML = '';
+  if (total <= 1) return;
+
+  const go = (page, label, disabled = false) => {
+    const b = document.createElement('button');
+    b.className = `pg-btn ${page === curPage ? 'active' : ''}`;
+    b.disabled  = disabled;
+    b.innerHTML = label;
+    if (!disabled && page !== curPage) {
+      b.onclick = () => { curPage = page; renderPage(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    }
+    pg.appendChild(b);
+  };
+
+  // Primera + Anterior
+  go(1,          `<i class="fa-solid fa-angles-left" style="font-size:.75rem;"></i>`, curPage === 1);
+  go(curPage - 1,`<i class="fa-solid fa-angle-left"  style="font-size:.75rem;"></i>`, curPage === 1);
+
+  // Páginas numeradas con elipsis
+  const range = 2;
+  let pages   = new Set([1, total]);
+  for (let p = Math.max(1, curPage - range); p <= Math.min(total, curPage + range); p++) pages.add(p);
+  pages = [...pages].sort((a,b) => a-b);
+
+  let prev = 0;
+  for (const p of pages) {
+    if (p - prev > 1) {
+      const dots = document.createElement('span');
+      dots.className = 'text-slate-400 text-sm px-1';
+      dots.textContent = '…';
+      pg.appendChild(dots);
+    }
+    go(p, p, false);
+    prev = p;
+  }
+
+  // Siguiente + Última
+  go(curPage + 1, `<i class="fa-solid fa-angle-right"  style="font-size:.75rem;"></i>`, curPage === total);
+  go(total,       `<i class="fa-solid fa-angles-right" style="font-size:.75rem;"></i>`, curPage === total);
+}
+
+// ─── Toggle vista ────────────────────────────────────────────────────────────
+function setView(v) {
+  view = v;
+  document.getElementById('gridView').classList.toggle('hidden', v !== 'grid');
+  document.getElementById('tableView').classList.toggle('hidden', v !== 'table');
+  document.getElementById('btnGrid').classList.toggle('active',  v === 'grid');
+  document.getElementById('btnTable').classList.toggle('active', v === 'table');
+  renderPage();
+}
+
+// ─── Modal ───────────────────────────────────────────────────────────────────
+function openModal(r) {
+  document.getElementById('modalTitle').textContent = r.title || 'Sin título';
+
+  const rows = [
+    ['Autores',       r.authors],
+    ['Asesor',       r.advisors],
+    ['Año',           (r.date||'').slice(0,4)],
+    ['Tipo',          r.type],
+    ['Idioma',        r.language],
+    ['Comunidad',     r.community],
+    ['Colección',     r.collection],
+    ['Grado',         r.degree],
+    ['Nivel',         r.degreeLevel],
+    ['Editorial',     r.publisher],
+    ['Temas',         r.topics],
+  ].filter(([,v]) => v);
+
+  const grid = rows.map(([label, val]) => `
+    <div>
+      <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">${label}</p>
+      <p class="text-sm text-slate-700">${esc(val)}</p>
+    </div>
+  `).join('');
+
+  const modalThumbSrc    = r.uuid ? `/thumb/${r.uuid}` : '';
+  const modalPlaceholder = thumbPlaceholderSVG(r.type);
+  document.getElementById('modalBody').innerHTML = `
+
+    <!-- Miniatura centrada y pequeña -->
+    <div class="flex justify-center mb-4">
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex items-center justify-center"
+           style="width:120px;height:150px">
+        <img
+          src="${modalThumbSrc || modalPlaceholder}"
+          alt="Miniatura"
+          loading="lazy"
+          class="object-contain p-2 transition-transform duration-300"
+          style="max-width:110px;max-height:140px"
+          onerror="this.onerror=null;this.src='${modalPlaceholder}'"
+        />
+      </div>
+    </div>
+
+    <!-- Botón único Ver PDF -->
+    ${r.uuid ? `
+    <div class="flex justify-center mb-5">
+      <button
+        onclick="openPdfNewTab('${r.uuid}','modal-pdf-btn-${r.uuid}')"
+        id="modal-pdf-btn-${r.uuid}"
+        class="inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold text-white
+               bg-gradient-to-r from-green-700 to-emerald-600 hover:from-green-800 hover:to-emerald-700
+               shadow hover:shadow-lg transition-all duration-200 active:scale-95">
+        <i class="fa-solid fa-file-pdf" style="font-size:.9rem;"></i>
+        Ver PDF
+        <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:.75rem;opacity:.8;"></i>
+      </button>
+    </div>` : ''}
+
+    <!-- Metadatos -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      ${grid}
+    </div>
+
+    <!-- Resumen -->
+    ${r.abstract ? `
+    <div class="mt-4 p-4 bg-slate-50 rounded-xl">
+      <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2"><i class="fa-solid fa-align-left" style="margin-right:.3rem;"></i> Resumen</p>
+      <p class="text-sm text-slate-700 leading-relaxed">${esc(r.abstract)}</p>
+    </div>` : ''}
+
+    <!-- Enlace repositorio -->
+    ${r.url ? `
+    <div class="pt-3 border-t border-slate-100 mt-2">
+      <a href="${r.url}" target="_blank" rel="noopener"
+        class="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-green-700 font-medium transition-colors">
+        <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:.75rem;"></i>
+        Ver ficha en repositorio UNAS
+      </a>
+    </div>` : ''}
+  `;
+
+  document.getElementById('modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal') ||
+      (e.target.tagName === 'BUTTON' && e.target.onclick === null)) {
+    document.getElementById('modal').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+}
+
+// ─── Obtener PDF → abrir en nueva pestaña ────────────────────────────────────
+async function openPdfNewTab(uuid, btnId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin-sm">⏳</span> Cargando…';
+  try {
+    const res  = await fetch(`/pdf/${uuid}`);
+    if (!res.ok) throw new Error('Sin PDF disponible');
+    const data = await res.json();
+    if (!data.downloadUrl) throw new Error('URL no encontrada');
+    window.open(data.downloadUrl, '_blank', 'noopener');
+    showToast('Abriendo: ' + data.name, 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+// ─── Descargar PDF ────────────────────────────────────────────────────────────
+async function downloadPdf(uuid, btnId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin-sm">⏳</span> Preparando…';
+  try {
+    const res  = await fetch(`/pdf/${uuid}`);
+    if (!res.ok) throw new Error('Sin PDF disponible');
+    const data = await res.json();
+    if (!data.downloadUrl) throw new Error('URL no encontrada');
+    const a = document.createElement('a');
+    a.href = data.downloadUrl; a.download = data.name || 'documento.pdf';
+    a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const kb = data.size ? ` (${(data.size/1024).toFixed(0)} KB)` : '';
+    showToast('↓ Descargando: ' + data.name + kb, 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.className = `fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-semibold text-white fade-in
+    ${type === 'success' ? 'bg-green-700' : 'bg-red-600'}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+// ─── Utilidades ───────────────────────────────────────────────────────────────
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function typeBadge(type) {
+  const t = (type || '').toLowerCase();
+  if (t.includes('pregrado') || t.includes('bachelor'))  return 'bg-blue-50 text-blue-700';
+  if (t.includes('maestría') || t.includes('master'))    return 'bg-purple-50 text-purple-700';
+  if (t.includes('doctoral') || t.includes('doctor'))    return 'bg-indigo-50 text-indigo-700';
+  if (t.includes('artículo') || t.includes('article'))   return 'bg-teal-50 text-teal-700';
+  if (t.includes('libro')    || t.includes('book'))      return 'bg-amber-50 text-amber-700';
+  if (t.includes('informe')  || t.includes('report'))    return 'bg-orange-50 text-orange-700';
+  if (t.includes('conferencia'))                         return 'bg-pink-50 text-pink-700';
+  return 'bg-slate-100 text-slate-600';
+}
+
+function typeIcon(type) {
+  const t = (type || '').toLowerCase();
+  if (t.includes('pregrado') || t.includes('bachelor'))  return '<i class="fa-solid fa-user-graduate"></i>';
+  if (t.includes('maestría') || t.includes('master'))    return '<i class="fa-solid fa-book"></i>';
+  if (t.includes('doctoral'))                            return '<i class="fa-solid fa-graduation-cap"></i>';
+  if (t.includes('artículo') || t.includes('article'))   return '<i class="fa-solid fa-newspaper"></i>';
+  if (t.includes('libro')    || t.includes('book'))      return '<i class="fa-solid fa-book-open"></i>';
+  if (t.includes('informe')  || t.includes('report'))    return '<i class="fa-solid fa-clipboard-list"></i>';
+  return '<i class="fa-solid fa-file-lines"></i>';
+}
+
+// Inicializar estados de los botones de vista
+document.getElementById('btnGrid').classList.add('active');
+document.getElementById('btnTable').classList.remove('active');
+
+// ─── Exportar Excel ──────────────────────────────────────────────────────────
+function exportarExcel() {
+  if (!filtered || filtered.length === 0) {
+    showToast('Sin registros para exportar con los filtros actuales.', 'error');
+    return;
+  }
+
+  // pdfUrl ya está guardado en cada registro desde la sincronización
+  // No se necesita ninguna consulta extra — es instantáneo
+  const rows = filtered.map(r => ({
+    'Facultad':           r.community   || '',
+    'Especialidad':       r.collection  || '',
+    'Título':             r.title       || '',
+    'Autor':              r.authors     || '',
+    'Asesor':             r.advisors    || '',
+    'Resumen':            r.abstract    || '',
+    'Año de publicación': (r.date || '').slice(0, 4) || '',
+    'Tipo':               r.type        || '',
+    'Temas':              r.topics      || '',
+    'Idioma':             r.language    || '',
+    'URL Repositorio':    r.url         || '',
+    'URL PDF':            r.pdfUrl      || '',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  // Ajustar anchos de columna automáticamente
+  const colWidths = Object.keys(rows[0] || {}).map(key => {
+    const maxLen = Math.max(
+      key.length,
+      ...rows.slice(0, 200).map(r => String(r[key] || '').length)
+    );
+    return { wch: Math.min(maxLen + 2, 80) };
+  });
+  ws['!cols'] = colWidths;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Repositorio UNAS');
+
+  // Nombre de archivo con fecha
+  const now   = new Date();
+  const fecha = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const fname = `repositorio_unas_${fecha}.xlsx`;
+
+  XLSX.writeFile(wb, fname);
+  showToast('Excel exportado: ' + filtered.length.toLocaleString('es-PE') + ' registros → ' + fname, 'success');
+}
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+//  DASHBOARD ANALYTICS — Lógica completa
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Paleta de colores institucional ──────────────────────────────────────
+const DASH_PALETTE = [
+  '#166534','#15803d','#16a34a','#22c55e','#4ade80',
+  '#065f46','#047857','#059669','#10b981','#34d399',
+  '#1d4ed8','#2563eb','#3b82f6','#60a5fa','#93c5fd',
+  '#7c3aed','#8b5cf6','#a78bfa','#c4b5fd','#ddd6fe',
+  '#b45309','#d97706','#f59e0b','#fbbf24','#fde68a',
+  '#be185d','#db2777','#ec4899','#f472b6','#fbcfe8',
+];
+
+const TYPE_COLORS = {
+  'Tesis de Pregrado':  '#166534',
+  'Tesis de Maestría':  '#2563eb',
+  'Tesis Doctoral':     '#7c3aed',
+  'Artículo Científico':'#0891b2',
+  'Conferencia':        '#db2777',
+  'Informe':            '#d97706',
+  'Libro':              '#b45309',
+  'Capítulo de Libro':  '#065f46',
+  'Documento de Trabajo':'#64748b',
+  'Otro':               '#94a3b8',
+};
+
+// ── Instancias de Chart.js (para destruir antes de recrear) ──────────────
+const _charts = {};
+
+function destroyChart(id) {
+  if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
+}
+
+// ── Cambio de pestaña principal ──────────────────────────────────────────
+function switchMainTab(tab) {
+  const explorer  = document.getElementById('explorerView');
+  const dashboard = document.getElementById('dashboardView');
+  const autores   = document.getElementById('autoresView');
+  const btnExp    = document.getElementById('tabBtnExplorer');
+  const btnDash   = document.getElementById('tabBtnDashboard');
+  const btnAut    = document.getElementById('tabBtnAutores');
+
+  // Ocultar todos
+  explorer.style.display  = 'none';
+  dashboard.style.display = 'none';
+  autores.style.display   = 'none';
+  btnExp.classList.remove('active');
+  btnDash.classList.remove('active');
+  if (btnAut) btnAut.classList.remove('active');
+
+  if (tab === 'dashboard') {
+    dashboard.style.display = 'block';
+    btnDash.classList.add('active');
+    if (validRecords && validRecords.length > 0) renderDashboard();
+  } else if (tab === 'autores') {
+    autores.style.display = 'block';
+    if (btnAut) btnAut.classList.add('active');
+    if (validRecords && validRecords.length > 0) {
+      populateAutoresFilters();
+      renderAutoresView();
+    }
+  } else {
+    explorer.style.display = '';
+    btnExp.classList.add('active');
+  }
+}
+
+// ── Obtener datos filtrados para el dashboard ─────────────────────────────
+function getDashData() {
+  const yearFrom  = parseInt(document.getElementById('dashYearFrom')?.value  || '0') || 0;
+  const yearTo    = parseInt(document.getElementById('dashYearTo')?.value    || '0') || 9999;
+  const community = (document.getElementById('dashCommunity')?.value || '').trim();
+
+  return validRecords.filter(r => {
+    const yr = parseInt((r.date || '').slice(0, 4)) || 0;
+    if (yearFrom && yr && yr < yearFrom) return false;
+    if (yearTo < 9999 && yr && yr > yearTo) return false;
+    if (community && (r.community || '') !== community) return false;
+    return true;
+  });
+}
+
+// ── Poblar filtros del dashboard ──────────────────────────────────────────
+function populateDashFilters() {
+  const years = [...new Set(
+    validRecords.map(r => parseInt((r.date || '').slice(0, 4))).filter(y => y >= 1900 && y <= 2100)
+  )].sort((a,b) => a - b);
+
+  const communities = [...new Set(validRecords.map(r => r.community || '').filter(Boolean))].sort();
+
+  const selFrom = document.getElementById('dashYearFrom');
+  const selTo   = document.getElementById('dashYearTo');
+  const selComm = document.getElementById('dashCommunity');
+
+  // Años desde
+  selFrom.innerHTML = '<option value="">Todos</option>' +
+    years.map(y => `<option value="${y}">${y}</option>`).join('');
+  // Años hasta (invertido)
+  selTo.innerHTML = '<option value="">Todos</option>' +
+    [...years].reverse().map(y => `<option value="${y}">${y}</option>`).join('');
+  // Comunidades
+  selComm.innerHTML = '<option value="">Todas las comunidades</option>' +
+    communities.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+}
+
+// ── Renderizar dashboard completo ─────────────────────────────────────────
+function renderDashboard() {
+  const data = getDashData();
+  renderKPIs(data);
+  renderYearChart(data);
+  renderTypeChart(data);
+  renderCommunityChart(data);
+  renderCollectionChart(data);
+  renderHeatmap(data);
+  renderLanguageChart(data);
+  renderTrendChart(data);
+  renderTopCollectionsTable(data);
+}
+
+// ── KPIs ──────────────────────────────────────────────────────────────────
+function renderKPIs(data) {
+  data = data || getDashData();
+  const total = data.length;
+
+  // Tipos
+  const typeCounts = countBy(data, r => r.type || 'Sin tipo');
+  const topType    = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  // Comunidades
+  const commCounts = countBy(data, r => r.community || 'Sin comunidad');
+  const topComm    = Object.entries(commCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  // Años
+  const years = data.map(r => parseInt((r.date||'').slice(0,4))).filter(y=>y>=1900&&y<=2100);
+  const uniqueYears = [...new Set(years)].sort((a,b)=>a-b);
+
+  document.getElementById('kpiTotal').textContent       = total.toLocaleString('es-PE');
+  document.getElementById('kpiTotalSub').textContent    = 'en el repositorio';
+  document.getElementById('kpiTypes').textContent       = Object.keys(typeCounts).length;
+  document.getElementById('kpiTypeTop').textContent     = topType ? topType[0].split(' ').slice(-1)[0] : '—';
+  document.getElementById('kpiCommunities').textContent = Object.keys(commCounts).length;
+  document.getElementById('kpiCommunityTop').textContent= topComm ? truncate(topComm[0], 22) : '—';
+  document.getElementById('kpiYears').textContent       = uniqueYears.length;
+  document.getElementById('kpiYearRange').textContent   = uniqueYears.length >= 2
+    ? `${uniqueYears[0]} – ${uniqueYears[uniqueYears.length-1]}`
+    : uniqueYears[0] || '—';
+}
+
+// ── Gráfico evolución por año ─────────────────────────────────────────────
+function renderYearChart(data) {
+  data = data || getDashData();
+  const mode = document.getElementById('dashYearGroup')?.value || 'all';
+  destroyChart('chartYear');
+
+  const yearCounts = countBy(data, r => (r.date||'').slice(0,4)).valueOf();
+  // Solo años válidos
+  const validEntries = Object.entries(yearCounts)
+    .filter(([y]) => y && parseInt(y) >= 1900 && parseInt(y) <= 2100)
+    .sort(([a],[b]) => parseInt(a)-parseInt(b));
+
+  if (!validEntries.length) return;
+
+  const labels = validEntries.map(([y]) => y);
+
+  let datasets;
+  if (mode === 'stacked') {
+    // Por tipo
+    const types = [...new Set(data.map(r => r.type || 'Sin tipo'))];
+    const top5Types = Object.entries(countBy(data, r => r.type||'Sin tipo'))
+      .sort((a,b)=>b[1]-a[1]).slice(0,6).map(([t])=>t);
+
+    datasets = top5Types.map((type, i) => {
+      const yearTypeMap = {};
+      data.filter(r => (r.type||'Sin tipo') === type).forEach(r => {
+        const yr = (r.date||'').slice(0,4);
+        if (yr && parseInt(yr)>=1900) yearTypeMap[yr] = (yearTypeMap[yr]||0)+1;
+      });
+      return {
+        label: type,
+        data: labels.map(y => yearTypeMap[y] || 0),
+        backgroundColor: TYPE_COLORS[type] || DASH_PALETTE[i % DASH_PALETTE.length],
+        borderRadius: 3,
+        stack: 'stack',
+      };
+    });
+  } else {
+    datasets = [{
+      label: 'Publicaciones',
+      data: validEntries.map(([,v]) => v),
+      backgroundColor: labels.map((_, i) => {
+        const ratio = i / Math.max(labels.length - 1, 1);
+        return `rgba(22,101,52,${0.35 + ratio * 0.65})`;
+      }),
+      borderColor: '#166534',
+      borderRadius: 4,
+      borderSkipped: false,
+    }];
+  }
+
+  const ctx = document.getElementById('chartYear').getContext('2d');
+  _charts['chartYear'] = new Chart(ctx, {
+    type: mode === 'stacked' ? 'bar' : 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: mode === 'stacked', position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 10 } },
+        tooltip: { mode: 'index', intersect: false,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('es-PE')}` }
+        },
+      },
+      scales: {
+        x: { stacked: mode === 'stacked', grid: { display: false },
+             ticks: { font: { size: 10 }, maxTicksLimit: 20, maxRotation: 45 } },
+        y: { stacked: mode === 'stacked', beginAtZero: true,
+             ticks: { font: { size: 11 }, precision: 0 },
+             grid: { color: '#f1f5f9' } },
+      },
+      interaction: { mode: 'index', intersect: false },
+    },
+  });
+}
+
+// ── Gráfico por tipo (donut) ──────────────────────────────────────────────
+function renderTypeChart(data) {
+  data = data || getDashData();
+  destroyChart('chartType');
+
+  const counts = countBy(data, r => r.type || 'Sin tipo');
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const total  = data.length || 1;
+
+  const labels = sorted.map(([k])=>k);
+  const values = sorted.map(([,v])=>v);
+  const colors = labels.map((l,i) => TYPE_COLORS[l] || DASH_PALETTE[i % DASH_PALETTE.length]);
+
+  const ctx = document.getElementById('chartType').getContext('2d');
+  _charts['chartType'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }] },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('es-PE')} (${((ctx.parsed/total)*100).toFixed(1)}%)`,
+          },
+        },
+      },
+    },
+  });
+
+  // Leyenda personalizada
+  const legend = document.getElementById('typeLegend');
+  legend.innerHTML = sorted.slice(0, 10).map(([label, count], i) => `
+    <div class="flex items-center justify-between gap-2 text-xs">
+      <div class="flex items-center gap-1.5 min-w-0">
+        <span class="w-3 h-3 rounded-sm flex-shrink-0" style="background:${colors[i]}"></span>
+        <span class="truncate text-slate-700 font-medium">${esc(label)}</span>
+      </div>
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        <span class="text-slate-500">${count.toLocaleString('es-PE')}</span>
+        <span class="text-slate-300 text-xs">${((count/total)*100).toFixed(1)}%</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Gráfico por comunidad (barras horizontales) ───────────────────────────
+function renderCommunityChart(data) {
+  data = data || getDashData();
+  destroyChart('chartCommunity');
+
+  const topN   = parseInt(document.getElementById('dashCommunityTop')?.value || '10') || 10;
+  const counts = countBy(data, r => r.community || 'Sin comunidad');
+  let sorted   = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  if (topN > 0) sorted = sorted.slice(0, topN);
+
+  const labels = sorted.map(([k]) => truncate(k, 35));
+  const values = sorted.map(([,v]) => v);
+
+  const ctx = document.getElementById('chartCommunity').getContext('2d');
+  _charts['chartCommunity'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Publicaciones',
+        data: values,
+        backgroundColor: values.map((_,i) => DASH_PALETTE[i % DASH_PALETTE.length]),
+        borderRadius: 5,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x.toLocaleString('es-PE')} publicaciones` } },
+      },
+      scales: {
+        x: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 }, grid: { color: '#f8fafc' } },
+        y: { ticks: { font: { size: 10 } }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+// ── Gráfico por colección (barras horizontales) ───────────────────────────
+function renderCollectionChart(data) {
+  data = data || getDashData();
+  destroyChart('chartCollection');
+
+  const topN   = parseInt(document.getElementById('dashCollectionTop')?.value || '10') || 10;
+  const counts = countBy(data, r => r.collection || 'Sin colección');
+  let sorted   = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  if (topN > 0) sorted = sorted.slice(0, topN);
+
+  const labels = sorted.map(([k]) => truncate(k, 35));
+  const values = sorted.map(([,v]) => v);
+
+  const ctx = document.getElementById('chartCollection').getContext('2d');
+  _charts['chartCollection'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Publicaciones',
+        data: values,
+        backgroundColor: values.map((_,i) => {
+          const greens = ['#166534','#15803d','#16a34a','#22c55e','#4ade80',
+                          '#065f46','#047857','#059669','#10b981','#34d399',
+                          '#6ee7b7','#a7f3d0','#d1fae5','#ecfdf5','#f0fdf4'];
+          return greens[i % greens.length];
+        }),
+        borderRadius: 5,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x.toLocaleString('es-PE')} publicaciones` } },
+      },
+      scales: {
+        x: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 }, grid: { color: '#f8fafc' } },
+        y: { ticks: { font: { size: 10 } }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+// ── Mapa de calor Año × Tipo ──────────────────────────────────────────────
+function renderHeatmap(data) {
+  data = data || getDashData();
+  destroyChart('chartHeatmap');
+
+  // Top 6 tipos
+  const typeCounts = countBy(data, r => r.type || 'Sin tipo');
+  const top6Types  = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([t])=>t);
+
+  // Años válidos
+  const years = [...new Set(
+    data.map(r => parseInt((r.date||'').slice(0,4))).filter(y=>y>=1900&&y<=2100)
+  )].sort((a,b)=>a-b);
+
+  // Construir datasets (un dataset por tipo = una "fila" en el heatmap simulado con bubble)
+  const bubbleData = [];
+  top6Types.forEach((type, ti) => {
+    years.forEach((year, yi) => {
+      const count = data.filter(r => (r.type||'Sin tipo')===type && parseInt((r.date||'').slice(0,4))===year).length;
+      if (count > 0) {
+        bubbleData.push({ x: year, y: ti, r: Math.min(Math.sqrt(count) * 3.5, 22), count, type });
+      }
+    });
+  });
+
+  const ctx = document.getElementById('chartHeatmap').getContext('2d');
+  _charts['chartHeatmap'] = new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: [{
+        label: 'Publicaciones',
+        data: bubbleData,
+        backgroundColor: bubbleData.map(d => {
+          const color = TYPE_COLORS[d.type] || DASH_PALETTE[top6Types.indexOf(d.type) % DASH_PALETTE.length];
+          return color + 'cc';
+        }),
+        borderColor: bubbleData.map(d => TYPE_COLORS[d.type] || '#166534'),
+        borderWidth: 1,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const d = ctx.raw;
+              return ` ${d.type} · ${d.x}: ${d.count.toLocaleString('es-PE')} pub.`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          type: 'linear', min: years[0]-0.5, max: years[years.length-1]+0.5,
+          ticks: { stepSize: 1, font: { size: 10 }, precision: 0, maxTicksLimit: 20 },
+          grid: { color: '#f1f5f9' },
+        },
+        y: {
+          type: 'linear', min: -0.5, max: top6Types.length - 0.5,
+          ticks: {
+            font: { size: 10 }, stepSize: 1,
+            callback: (val) => {
+              const idx = Math.round(val);
+              return top6Types[idx] ? truncate(top6Types[idx], 22) : '';
+            },
+          },
+          grid: { color: '#f1f5f9' },
+        },
+      },
+    },
+  });
+}
+
+// ── Gráfico por idioma ────────────────────────────────────────────────────
+function renderLanguageChart(data) {
+  data = data || getDashData();
+  destroyChart('chartLanguage');
+
+  const langMap = { 'spa':'Español','es':'Español','en':'Inglés','eng':'Inglés',
+                    'por':'Portugués','pt':'Portugués','fr':'Francés','fra':'Francés',
+                    'de':'Alemán','deu':'Alemán','it':'Italiano','ita':'Italiano' };
+  const counts = countBy(data, r => {
+    const raw = (r.language || 'No especificado').toLowerCase().trim();
+    return langMap[raw] || (raw ? raw.charAt(0).toUpperCase()+raw.slice(1) : 'No especificado');
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  const ctx = document.getElementById('chartLanguage').getContext('2d');
+  _charts['chartLanguage'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(([k])=>k),
+      datasets: [{
+        label: 'Publicaciones',
+        data: sorted.map(([,v])=>v),
+        backgroundColor: sorted.map((_,i)=>DASH_PALETTE[i%DASH_PALETTE.length]),
+        borderRadius: 6, borderSkipped: false,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y.toLocaleString('es-PE')} publicaciones` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 }, grid: { color: '#f8fafc' } },
+      },
+    },
+  });
+}
+
+// ── Gráfico tendencia reciente (línea por tipo) ───────────────────────────
+function renderTrendChart(data) {
+  data = data || getDashData();
+  destroyChart('chartTrend');
+
+  const nYears = parseInt(document.getElementById('dashTrendYears')?.value || '5') || 5;
+  const currentYear = new Date().getFullYear();
+  const fromYear    = currentYear - nYears + 1;
+
+  const recentData = data.filter(r => {
+    const yr = parseInt((r.date||'').slice(0,4));
+    return yr >= fromYear && yr <= currentYear;
+  });
+
+  const years = Array.from({length: nYears}, (_, i) => String(fromYear + i));
+
+  // Top 4 tipos en datos recientes
+  const typeCounts = countBy(recentData, r => r.type || 'Sin tipo');
+  const top4 = Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([t])=>t);
+
+  const datasets = top4.map((type, i) => {
+    const color = TYPE_COLORS[type] || DASH_PALETTE[i % DASH_PALETTE.length];
+    const yearMap = {};
+    recentData.filter(r => (r.type||'Sin tipo')===type).forEach(r => {
+      const yr = (r.date||'').slice(0,4);
+      if (yr) yearMap[yr] = (yearMap[yr]||0)+1;
+    });
+    return {
+      label: type,
+      data: years.map(y => yearMap[y] || 0),
+      borderColor: color,
+      backgroundColor: color + '22',
+      borderWidth: 2.5,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      tension: 0.35,
+      fill: false,
+    };
+  });
+
+  const ctx = document.getElementById('chartTrend').getContext('2d');
+  _charts['chartTrend'] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: years, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 12, padding: 10 } },
+        tooltip: { mode: 'index', intersect: false },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 }, grid: { color: '#f1f5f9' } },
+      },
+      interaction: { mode: 'index', intersect: false },
+    },
+  });
+}
+
+// ── Tabla top colecciones ─────────────────────────────────────────────────
+function renderTopCollectionsTable(data) {
+  data = data || getDashData();
+  const total = data.length || 1;
+
+  // Agrupar por colección + comunidad
+  const map = {};
+  data.forEach(r => {
+    const key = (r.collection||'Sin colección') + '|||' + (r.community||'');
+    map[key] = (map[key] || 0) + 1;
+  });
+  const sorted = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,15);
+
+  const rankColors = ['#f59e0b','#94a3b8','#b45309'];
+  const tbody = document.getElementById('tableTopCollections');
+  tbody.innerHTML = sorted.map(([key, count], i) => {
+    const [col, comm] = key.split('|||');
+    const pct  = ((count / total) * 100).toFixed(1);
+    const rank = i + 1;
+    const badgeStyle = rank <= 3
+      ? `background:${rankColors[rank-1]};color:#fff`
+      : `background:#f1f5f9;color:#64748b`;
+    return `
+      <tr class="border-t border-slate-50">
+        <td><span class="rank-badge" style="${badgeStyle}">${rank}</span></td>
+        <td class="font-medium text-slate-700 max-w-[160px]">
+          <div class="truncate" title="${esc(col)}">${esc(col)}</div>
+        </td>
+        <td class="text-slate-500 max-w-[120px]">
+          <div class="truncate" title="${esc(comm)}">${esc(comm||'—')}</div>
+        </td>
+        <td class="text-right font-semibold text-slate-800">${count.toLocaleString('es-PE')}</td>
+        <td class="text-right">
+          <div class="flex items-center justify-end gap-1.5">
+            <div class="h-1.5 rounded-full bg-green-100 w-12 overflow-hidden">
+              <div class="h-full rounded-full bg-green-600" style="width:${Math.min(pct,100)}%"></div>
+            </div>
+            <span class="text-slate-400">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+// ── Utilidades ────────────────────────────────────────────────────────────
+function countBy(arr, fn) {
+  const map = {};
+  arr.forEach(item => { const k = fn(item); map[k] = (map[k]||0)+1; });
+  return map;
+}
+function truncate(str, n) {
+  return str && str.length > n ? str.slice(0, n-1) + '…' : str;
+}
+
+// ── populateDashFilters se llama desde populateFilters() original ─────────
+
+// ══════════════════════════════════════════════════════════════════════════
+//  AUTORES — Lógica completa
+// ══════════════════════════════════════════════════════════════════════════
+
+let _autoresPage     = 1;
+const AUTORES_PER_PAGE = 20;
+let _autoresFiltered = [];
+
+// ── Poblar selectores de filtros ─────────────────────────────────────────
+let _allAdvisors = [];
+
+function populateAutoresFilters() {
+  // DISTINCT robusto: normalizar espacios + deduplicar ignorando mayusculas
+  const seen = new Map();
+  validRecords.forEach(r => {
+    (r.advisors || '').split(';').forEach(raw => {
+      const name = raw.replace(/\s+/g, ' ').trim();
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (!seen.has(key)) seen.set(key, name);
+    });
+  });
+  _allAdvisors = [...seen.values()].sort((a, b) => a.localeCompare(b, 'es'));
+  _advCurrentList = _allAdvisors.slice();
+
+  const years = [...new Set(
+    validRecords.map(r => (r.date || '').slice(0, 4)).filter(y => /^\d{4}$/.test(y))
+  )].sort((a, b) => b - a);
+
+  const prevAdv = document.getElementById('autoresFilterAdvisor')?.value || '';
+  renderAdvOptions(_allAdvisors, prevAdv);
+
+  const selYear = document.getElementById('autoresFilterYear');
+  if (!selYear) return;
+  const prevYear = selYear.value;
+  selYear.innerHTML = '<option value="">Todos los a\u00f1os</option>' +
+    years.map(y => `<option value="${y}"${prevYear === y ? ' selected' : ''}>${y}</option>`).join('');
+}
+
+let _advCurrentList = [];
+function renderAdvOptions(list, selected) {
+  const container = document.getElementById('advOptionsList');
+  if (!container) return;
+  _advCurrentList = list.slice();
+  const allOpt = `<div class="adv-option all-opt${!selected ? ' selected' : ''}"
+    data-value="" onclick="selectAdvOptionByIdx(-1)">Todos los asesores</div>`;
+  if (!list.length) {
+    container.innerHTML = allOpt + '<div class="adv-no-results"><i class="fa-solid fa-face-meh mr-1"></i>Sin resultados</div>';
+    return;
+  }
+  container.innerHTML = allOpt + list.map((a, i) => {
+    const isSel = selected === a;
+    return `<div class="adv-option${isSel ? ' selected' : ''}" data-idx="${i}"
+      onclick="selectAdvOptionByIdx(${i})">${esc(a)}</div>`;
+  }).join('');
+}
+
+function filterAdvOptions(query) {
+  const q = (query || '').toLowerCase().trim();
+  const selected = document.getElementById('autoresFilterAdvisor')?.value || '';
+  _advCurrentList = q ? _allAdvisors.filter(a => a.toLowerCase().includes(q)) : _allAdvisors.slice();
+  renderAdvOptions(_advCurrentList, selected);
+}
+
+function selectAdvOptionByIdx(idx) {
+  const value = (idx >= 0 && _advCurrentList[idx] !== undefined) ? _advCurrentList[idx] : '';
+  const hidden = document.getElementById('autoresFilterAdvisor');
+  if (hidden) hidden.value = value;
+  const label = document.getElementById('advDropdownLabel');
+  if (label) label.textContent = value || 'Todos los asesores';
+  renderAdvOptions(_advCurrentList, value);
+  closeAdvDropdown();
+  renderAutoresView();
+}
+function selectAdvOption(el, value) { selectAdvOptionByIdx(-1); }
+
+function _positionAdvPanel() {
+  const panel = document.getElementById('advDropdownPanel');
+  const btn   = document.getElementById('advDropdownBtn');
+  if (!panel || !btn) return;
+  // Leer coordenadas del boton en el VIEWPORT (getBoundingClientRect es siempre relativo al viewport)
+  const rect   = btn.getBoundingClientRect();
+  const panelW = Math.max(rect.width, 280);
+  let topPos  = rect.bottom + 4;
+  let leftPos = rect.left;
+  if (leftPos + panelW > window.innerWidth - 8) leftPos = window.innerWidth - panelW - 8;
+  if (leftPos < 8) leftPos = 8;
+  if (topPos + 280 > window.innerHeight) topPos = rect.top - 290;
+  if (topPos < 8) topPos = 8;
+  panel.style.top   = topPos + 'px';
+  panel.style.left  = leftPos + 'px';
+  panel.style.width = panelW + 'px';
+}
+
+function toggleAdvDropdown(e) {
+  e.stopPropagation();
+  const panel = document.getElementById('advDropdownPanel');
+  const btn   = document.getElementById('advDropdownBtn');
+  const input = document.getElementById('advSearchInput');
+  if (!panel) return;
+  if (panel.classList.contains('open')) {
+    closeAdvDropdown();
+    return;
+  }
+  // IMPORTANTE: leer rect ANTES de mostrar el panel para coordenadas limpias
+  const rect   = btn.getBoundingClientRect();
+  const panelW = Math.max(rect.width, 280);
+  let topPos  = rect.bottom + 4;
+  let leftPos = rect.left;
+  if (leftPos + panelW > window.innerWidth - 8) leftPos = window.innerWidth - panelW - 8;
+  if (leftPos < 8) leftPos = 8;
+  if (topPos + 280 > window.innerHeight) topPos = rect.top - 290;
+  if (topPos < 8) topPos = 8;
+  panel.style.top   = topPos + 'px';
+  panel.style.left  = leftPos + 'px';
+  panel.style.width = panelW + 'px';
+  panel.classList.add('open');
+  btn.classList.add('open');
+  _advCurrentList = _allAdvisors.slice();
+  if (input) { input.value = ''; filterAdvOptions(''); setTimeout(() => input.focus(), 30); }
+}
+
+function closeAdvDropdown() {
+  const panel = document.getElementById('advDropdownPanel');
+  const btn   = document.getElementById('advDropdownBtn');
+  if (panel) { panel.classList.remove('open'); }
+  if (btn)   { btn.classList.remove('open'); }
+}
+
+// Cerrar con Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeAdvDropdown();
+});
+
+// Reposicionar al hacer scroll o resize
+window.addEventListener('scroll', function() {
+  const panel = document.getElementById('advDropdownPanel');
+  if (panel && panel.classList.contains('open')) _positionAdvPanel();
+}, true);
+window.addEventListener('resize', function() {
+  const panel = document.getElementById('advDropdownPanel');
+  if (panel && panel.classList.contains('open')) _positionAdvPanel();
+});
+
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('advDropdownWrap');
+  if (wrap && !wrap.contains(e.target)) closeAdvDropdown();
+});
+
+// ── Obtener datos filtrados ───────────────────────────────────────────────
+function getAutoresData() {
+  const advisor = (document.getElementById('autoresFilterAdvisor')?.value || '').trim();
+  const year    = (document.getElementById('autoresFilterYear')?.value    || '').trim();
+
+  return validRecords.filter(r => {
+    const yr = (r.date || '').slice(0, 4);
+    if (year && yr !== year) return false;
+    if (advisor) {
+      const advList = (r.advisors || '').split(';').map(a => a.trim());
+      if (!advList.includes(advisor)) return false;
+    }
+    return true;
+  });
+}
+
+// ── Limpiar filtros ───────────────────────────────────────────────────────
+function clearAutoresFilters() {
+  const fa = document.getElementById('autoresFilterAdvisor');
+  if (fa) fa.value = '';
+  const lbl = document.getElementById('advDropdownLabel');
+  if (lbl) lbl.textContent = 'Todos los asesores';
+  document.querySelectorAll('#advOptionsList .adv-option').forEach(o => {
+    o.classList.toggle('selected', o.dataset.value === '');
+  });
+  const si = document.getElementById('advSearchInput');
+  if (si) si.value = '';
+  closeAdvDropdown();
+  const fy = document.getElementById('autoresFilterYear');
+  if (fy) fy.value = '';
+  const fs = document.getElementById('autoresSearch');
+  if (fs) fs.value = '';
+  _autoresPage = 1;
+  renderAutoresView();
+}
+
+// ── Renderizado principal ─────────────────────────────────────────────────
+function renderAutoresView() {
+  _autoresPage = 1;
+  const data = getAutoresData();
+  _autoresFiltered = data;
+
+  renderAutoresStats(data);
+  renderAutoresChartBar(data);
+  renderAutoresChartPie(data);
+  renderAutoresChartLine(data);
+  renderAutoresChartYears(data);
+  renderAutoresTable();
+}
+
+// ── Estadísticas rápidas ──────────────────────────────────────────────────
+function renderAutoresStats(data) {
+  const uniqueAdvisors = new Set(
+    data.flatMap(r => (r.advisors || '').split(';').map(a => a.trim()).filter(Boolean))
+  );
+  const uniqueYears = new Set(
+    data.map(r => (r.date || '').slice(0, 4)).filter(y => /^\d{4}$/.test(y))
+  );
+  const avg = uniqueAdvisors.size > 0
+    ? (data.length / uniqueAdvisors.size).toFixed(1)
+    : '—';
+
+  const s1 = document.getElementById('autoresStat1');
+  const s2 = document.getElementById('autoresStat2');
+  const s3 = document.getElementById('autoresStat3');
+  const s4 = document.getElementById('autoresStat4');
+  if (s1) s1.textContent = data.length.toLocaleString('es-PE');
+  if (s2) s2.textContent = uniqueAdvisors.size.toLocaleString('es-PE');
+  if (s3) s3.textContent = uniqueYears.size.toLocaleString('es-PE');
+  if (s4) s4.textContent = avg;
+}
+
+// ── Gráfico de Barras: Top 15 Asesores ───────────────────────────────────
+function renderAutoresChartBar(data) {
+  destroyChart('chartAutoresBar');
+
+  const map = {};
+  data.forEach(r => {
+    (r.advisors || '').split(';').forEach(a => {
+      const name = a.trim();
+      if (name) map[name] = (map[name] || 0) + 1;
+    });
+  });
+
+  const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 15);
+  if (!sorted.length) return;
+
+  const labels = sorted.map(([n]) => n.length > 35 ? n.slice(0, 33) + '\u2026' : n);
+  const values = sorted.map(([, c]) => c);
+
+  const palette = [
+    '#22c55e','#16a34a','#15803d','#166534','#14532d',
+    '#4ade80','#86efac','#bbf7d0','#34d399','#10b981',
+    '#059669','#047857','#065f46','#064e3b','#6ee7b7',
+  ];
+
+  const ctx = document.getElementById('chartAutoresBar');
+  if (!ctx) return;
+  _charts['chartAutoresBar'] = new Chart(ctx.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'N\u00ba de Tesis',
+        data: values,
+        backgroundColor: palette.slice(0, sorted.length),
+        borderRadius: 6,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ` ${c.parsed.x} tesis` } },
+      },
+      scales: {
+        x: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { font: { size: 10 } }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+// ── Gráfico de Torta: Distribución por Tipo ───────────────────────────────
+function renderAutoresChartPie(data) {
+  destroyChart('chartAutoresPie');
+
+  const map = {};
+  data.forEach(r => {
+    const t = r.type || 'Sin tipo';
+    map[t] = (map[t] || 0) + 1;
+  });
+
+  const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
+  if (!sorted.length) return;
+
+  const labels = sorted.map(([t]) => t);
+  const values = sorted.map(([, c]) => c);
+  const colors = [
+    '#22c55e','#3b82f6','#f59e0b','#ef4444','#8b5cf6',
+    '#06b6d4','#ec4899','#10b981','#f97316','#6366f1',
+  ];
+
+  const ctx = document.getElementById('chartAutoresPie');
+  if (!ctx) return;
+  _charts['chartAutoresPie'] = new Chart(ctx.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors.slice(0, labels.length),
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverOffset: 8,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12, padding: 10 } },
+        tooltip: {
+          callbacks: {
+            label: c => ` ${c.label}: ${c.parsed} tesis (${((c.parsed / data.length) * 100).toFixed(1)}%)`,
+          },
+        },
+      },
+    },
+  });
+}
+
+// ── Gráfico de Línea: Evolución por Año ──────────────────────────────────
+function renderAutoresChartLine(data) {
+  destroyChart('chartAutoresLine');
+
+  const map = {};
+  data.forEach(r => {
+    const yr = (r.date || '').slice(0, 4);
+    if (/^\d{4}$/.test(yr)) map[yr] = (map[yr] || 0) + 1;
+  });
+
+  const years  = Object.keys(map).sort();
+  const counts = years.map(y => map[y]);
+  if (!years.length) return;
+
+  const ctx = document.getElementById('chartAutoresLine');
+  if (!ctx) return;
+  _charts['chartAutoresLine'] = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [{
+        label: 'Tesis publicadas',
+        data: counts,
+        borderColor: '#22c55e',
+        backgroundColor: 'rgba(34,197,94,.12)',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        tension: 0.35,
+        fill: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 }, grid: { color: '#f1f5f9' } },
+      },
+    },
+  });
+}
+
+// ── Tabla: Asesorados por Año (reemplaza gráfico de barras) ──────────────
+function renderAutoresChartYears(data) {
+  if (!data) data = getAutoresData();
+
+  // Construir mapa año → cantidad
+  const map = {};
+  data.forEach(r => {
+    const yr = (r.date || '').slice(0, 4);
+    if (/^\d{4}$/.test(yr)) map[yr] = (map[yr] || 0) + 1;
+  });
+
+  // Leer cuántos años mostrar
+  const rangeEl = document.getElementById('autoresYearsRange');
+  const range   = rangeEl ? parseInt(rangeEl.value) : 15;
+
+  // Ordenar años descendente y tomar los N más recientes
+  let years = Object.keys(map).sort((a, b) => parseInt(b) - parseInt(a));
+  if (range > 0) years = years.slice(0, range);
+
+  const tbody = document.getElementById('autoresYearsTableBody');
+  const tfoot = document.getElementById('autoresYearsTableFoot');
+  if (!tbody) return;
+
+  if (!years.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="padding:24px;text-align:center;color:#94a3b8;font-size:.8rem;">
+      <i class="fa-solid fa-circle-exclamation" style="font-size:1.4rem;display:block;margin-bottom:6px;color:#cbd5e1;"></i>
+      No hay datos disponibles.
+    </td></tr>`;
+    if (tfoot) tfoot.innerHTML = '';
+    return;
+  }
+
+  const total  = years.reduce((s, y) => s + map[y], 0);
+  const maxVal = Math.max(...years.map(y => map[y]), 1);
+  const rowColors = ['#f0f9ff', '#ffffff'];
+
+  tbody.innerHTML = years.map((yr, i) => {
+    const qty  = map[yr];
+    const pct  = total > 0 ? ((qty / total) * 100).toFixed(1) : '0.0';
+    const barW = Math.round((qty / maxVal) * 100);
+    const bg   = rowColors[i % 2];
+    return `
+      <tr style="background:${bg};border-bottom:1px solid #e2e8f0;transition:background .14s;"
+          onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='${bg}'">
+        <td style="padding:8px 16px;color:#94a3b8;font-weight:600;font-size:.78rem;">${i + 1}</td>
+        <td style="padding:8px 16px;font-weight:700;color:#0369a1;font-size:.85rem;">${yr}</td>
+        <td style="padding:8px 16px;text-align:center;">
+          <span style="display:inline-block;background:linear-gradient(135deg,#0284c7,#38bdf8);color:#fff;font-weight:700;font-size:.8rem;padding:2px 12px;border-radius:9999px;min-width:42px;text-align:center;">
+            ${qty.toLocaleString('es-PE')}
+          </span>
+        </td>
+        <td style="padding:8px 16px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;background:#e0f2fe;border-radius:9999px;height:8px;overflow:hidden;">
+              <div style="width:${barW}%;height:100%;background:linear-gradient(90deg,#0284c7,#38bdf8);border-radius:9999px;"></div>
+            </div>
+            <span style="font-size:.72rem;color:#64748b;font-weight:600;min-width:38px;text-align:right;">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr style="background: linear-gradient(90deg, #45a9dd, #95d0ee);border-top:2px solid #0284c7;">
+        <td colspan="2" style="padding:9px 16px;font-weight:700;color:#fff;font-size:.8rem;letter-spacing:.03em;">
+          <i class="fa-solid fa-sigma" style="margin-right:6px;opacity:.8;"></i>TOTAL (${years.length} año${years.length !== 1 ? 's' : ''})
+        </td>
+        <td style="padding:9px 16px;text-align:center;">
+          <span style="display:inline-block;background:rgba(255,255,255,.25);color:#fff;font-weight:800;font-size:.85rem;padding:2px 14px;border-radius:9999px;min-width:42px;text-align:center;">
+            ${total.toLocaleString('es-PE')}
+          </span>
+        </td>
+        <td style="padding:9px 16px;color:rgba(255,255,255,.7);font-size:.75rem;font-weight:600;">100%</td>
+      </tr>`;
+  }
+}
+
+// ── Tabla de Listado con búsqueda y paginación ────────────────────────────
+function renderAutoresTable() {
+  const searchEl = document.getElementById('autoresSearch');
+  const search = (searchEl ? searchEl.value : '').toLowerCase();
+  let rows = _autoresFiltered;
+
+  if (search) {
+    rows = rows.filter(r =>
+      (r.title    || '').toLowerCase().includes(search) ||
+      (r.authors  || '').toLowerCase().includes(search) ||
+      (r.advisors || '').toLowerCase().includes(search) ||
+      (r.type     || '').toLowerCase().includes(search)
+    );
+  }
+
+  // Ordenar por año de mayor a menor (registros sin año van al final)
+  rows = [...rows].sort((a, b) => {
+    const ya = parseInt((a.date || '').slice(0, 4)) || 0;
+    const yb = parseInt((b.date || '').slice(0, 4)) || 0;
+    return yb - ya;
+  });
+
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / AUTORES_PER_PAGE));
+  if (_autoresPage > pages) _autoresPage = pages;
+
+  const start = (_autoresPage - 1) * AUTORES_PER_PAGE;
+  const slice = rows.slice(start, start + AUTORES_PER_PAGE);
+
+  const countEl = document.getElementById('autoresTableCount');
+  const pagEl   = document.getElementById('autoresPagInfo');
+  const prevBtn = document.getElementById('autoresPrevBtn');
+  const nextBtn = document.getElementById('autoresNextBtn');
+
+  if (countEl) countEl.textContent = total.toLocaleString('es-PE');
+  if (pagEl)   pagEl.textContent   =
+    `Mostrando ${start + 1}\u2013${Math.min(start + AUTORES_PER_PAGE, total)} de ${total.toLocaleString('es-PE')}`;
+  if (prevBtn) prevBtn.disabled = _autoresPage <= 1;
+  if (nextBtn) nextBtn.disabled = _autoresPage >= pages;
+
+  const TYPE_COLORS_AUT = {
+    'Tesis de Pregrado':   { bg: '#dcfce7', color: '#15803d' },
+    'Tesis de Maestr\u00eda': { bg: '#dbeafe', color: '#1d4ed8' },
+    'Tesis Doctoral':      { bg: '#ede9fe', color: '#6d28d9' },
+    'Art\u00edculo Cient\u00edfico': { bg: '#fef3c7', color: '#b45309' },
+  };
+
+  const tbody = document.getElementById('autoresTableBody');
+  if (!tbody) return;
+
+  if (!slice.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-10 text-center text-slate-400 text-sm">
+      <i class="fa-solid fa-circle-exclamation text-2xl mb-2 block text-slate-300"></i>
+      No se encontraron tesis con los filtros seleccionados.
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = slice.map((r, i) => {
+    const yr    = (r.date || '').slice(0, 4) || '\u2014';
+    const title = esc(truncate(r.title    || 'Sin t\u00edtulo', 80));
+    const auth  = esc(truncate(r.authors  || '\u2014', 50));
+    const adv   = esc(truncate(r.advisors || '\u2014', 50));
+    const type  = r.type || 'Sin tipo';
+    const tc    = TYPE_COLORS_AUT[type] || { bg: '#f1f5f9', color: '#64748b' };
+    const badge = `<span class="badge" style="background:${tc.bg};color:${tc.color};">${esc(type)}</span>`;
+    const link  = r.url
+      ? `<a href="${esc(r.url)}" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-green-50 text-green-700 text-xs font-semibold hover:bg-green-100 transition">
+           <i class="fa-solid fa-arrow-up-right-from-square text-[0.6rem]"></i> Ver
+         </a>`
+      : '<span class="text-slate-300 text-xs">\u2014</span>';
+
+    return `
+      <tr class="border-t border-slate-50 hover:bg-slate-50/70">
+        <td class="px-4 py-3 text-slate-400 font-medium">${start + i + 1}</td>
+        <td class="px-4 py-3 text-slate-700 font-medium max-w-[260px]">
+          <div class="truncate" title="${esc(r.title || '')}">${title}</div>
+        </td>
+        <td class="px-4 py-3 text-slate-500 max-w-[160px]">
+          <div class="truncate" title="${esc(r.authors || '')}">${auth}</div>
+        </td>
+        <td class="px-4 py-3 text-slate-600 max-w-[160px]">
+          <div class="truncate font-medium" title="${esc(r.advisors || '')}">${adv}</div>
+        </td>
+        <td class="px-4 py-3 text-slate-600 font-semibold whitespace-nowrap">${yr}</td>
+        <td class="px-4 py-3">${badge}</td>
+        <td class="px-4 py-3">${link}</td>
+      </tr>`;
+  }).join('');
+}
+
+// ── Cambio de página ──────────────────────────────────────────────────────
+function autoresChangePage(delta) {
+  _autoresPage += delta;
+  renderAutoresTable();
+  const av = document.getElementById('autoresView');
+  if (av) av.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+</script>
+
+
+  <!-- Dropdown panel de asesores — fuera de cualquier stacking context -->
+  <div id="advDropdownPanel">
+    <div class="adv-search-wrap" style="position:relative;">
+      <i class="fa-solid fa-magnifying-glass adv-search-icon"></i>
+      <input type="text" class="adv-search-input" id="advSearchInput"
+        placeholder="Buscar asesor…"
+        oninput="filterAdvOptions(this.value)"
+        onclick="event.stopPropagation()" />
+    </div>
+    <div class="adv-list" id="advOptionsList"></div>
+  </div>
+
+  <!-- ── Modal de contraseña para Sincronizar ─────────────────────────── -->
+  <div id="syncPasswordModal" style="
+    display:none;position:fixed;inset:0;z-index:9999;
+    background:rgba(15,23,42,.55);backdrop-filter:blur(4px);
+    align-items:center;justify-content:center;">
+    <div style="
+      background:#fff;border-radius:18px;padding:32px 28px 24px;
+      width:100%;max-width:380px;margin:16px;
+      box-shadow:0 24px 60px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);
+      animation:slideDown .28s cubic-bezier(.22,1,.36,1) both;">
+      <div style="display:flex;justify-content:center;margin-bottom:16px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;
+          width:52px;height:52px;border-radius:14px;
+          background:linear-gradient(135deg,#166534,#22c55e);">
+          <i class="fa-solid fa-lock" style="color:#fff;font-size:1.3rem;"></i>
+        </span>
+      </div>
+      <h3 style="text-align:center;font-size:1rem;font-weight:700;color:#0f172a;margin-bottom:4px;">
+        Acceso restringido
+      </h3>
+      <p style="text-align:center;font-size:.8rem;color:#64748b;margin-bottom:20px;">
+        Ingresa la clave para sincronizar el repositorio
+      </p>
+      <div style="position:relative;margin-bottom:14px;">
+        <input id="syncPasswordInput" type="password"
+          placeholder="Clave de sincronización"
+          onkeydown="if(event.key==='Enter')confirmSyncPassword()"
+          style="width:100%;padding:10px 42px 10px 14px;border:1.5px solid #e2e8f0;
+            border-radius:10px;font-size:.88rem;color:#0f172a;outline:none;
+            transition:border-color .18s,box-shadow .18s;box-sizing:border-box;"
+          onfocus="this.style.borderColor='#22c55e';this.style.boxShadow='0 0 0 3px rgba(34,197,94,.15)'"
+          onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'" />
+        <button onclick="toggleSyncPwdVisibility()"
+          style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+            background:none;border:none;cursor:pointer;color:#94a3b8;padding:2px;">
+          <i id="syncPwdEyeIcon" class="fa-solid fa-eye" style="font-size:.85rem;"></i>
+        </button>
+      </div>
+      <div id="syncPasswordError" style="
+        display:none;background:#fef2f2;border:1px solid #fecaca;
+        border-radius:8px;padding:8px 12px;margin-bottom:12px;
+        font-size:.78rem;color:#dc2626;font-weight:600;text-align:center;">
+        <i class="fa-solid fa-circle-exclamation" style="margin-right:5px;"></i>
+        Clave incorrecta. Intenta nuevamente.
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px;">
+        <button onclick="closeSyncPasswordModal()"
+          style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #e2e8f0;
+            background:#f8fafc;font-size:.85rem;font-weight:600;color:#64748b;
+            cursor:pointer;transition:background .15s;"
+          onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+          Cancelar
+        </button>
+        <button onclick="confirmSyncPassword()"
+          style="flex:1;padding:10px;border-radius:10px;border:none;
+            background:linear-gradient(135deg,#166534,#22c55e);
+            font-size:.85rem;font-weight:700;color:#fff;
+            cursor:pointer;transition:opacity .15s;box-shadow:0 2px 8px rgba(34,197,94,.3);"
+          onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+          <i class="fa-solid fa-rotate" style="margin-right:5px;"></i>Sincronizar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ── Contraseña modal para Sincronizar ──────────────────────────────────
+  const SYNC_PASSWORD = 'repository$2026$';
+
+  function openSyncPasswordModal() {
+    const modal = document.getElementById('syncPasswordModal');
+    const input = document.getElementById('syncPasswordInput');
+    const err   = document.getElementById('syncPasswordError');
+    modal.style.display = 'flex';
+    input.value = '';
+    err.style.display = 'none';
+    setTimeout(() => input.focus(), 80);
+  }
+
+  function closeSyncPasswordModal() {
+    document.getElementById('syncPasswordModal').style.display = 'none';
+  }
+
+  function toggleSyncPwdVisibility() {
+    const input = document.getElementById('syncPasswordInput');
+    const icon  = document.getElementById('syncPwdEyeIcon');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.className = 'fa-solid fa-eye-slash';
+    } else {
+      input.type = 'password';
+      icon.className = 'fa-solid fa-eye';
+    }
+  }
+
+  function confirmSyncPassword() {
+    const input = document.getElementById('syncPasswordInput');
+    const err   = document.getElementById('syncPasswordError');
+    if (input.value === SYNC_PASSWORD) {
+      closeSyncPasswordModal();
+      startSync();
+    } else {
+      err.style.display = 'block';
+      input.value = '';
+      input.style.borderColor = '#fca5a5';
+      input.style.boxShadow = '0 0 0 3px rgba(239,68,68,.15)';
+      setTimeout(() => {
+        input.style.borderColor = '#e2e8f0';
+        input.style.boxShadow = 'none';
+      }, 1200);
+      input.focus();
+    }
+  }
+
+  // Cerrar modal al hacer clic fuera
+  document.getElementById('syncPasswordModal').addEventListener('click', function(e) {
+    if (e.target === this) closeSyncPasswordModal();
+  });
+
+  // ── Sobrescribir handleSyncBtn para pedir contraseña al iniciar ───────
+  const _origHandleSyncBtn = handleSyncBtn;
+  handleSyncBtn = function() {
+    if (syncStatus === 'syncing') {
+      stopSync();              // Pausar no requiere contraseña
+    } else if (syncStatus === 'paused') {
+      startSync();             // Continuar tampoco requiere contraseña
+    } else {
+      openSyncPasswordModal(); // Iniciar sí requiere contraseña
+    }
+  };
+  </script>
+
+</body>
+</html>
