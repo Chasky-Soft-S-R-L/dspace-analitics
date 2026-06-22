@@ -1,18 +1,1 @@
-{
-  "lastSync": "2026-06-22T13:59:57.295Z",
-  "total": 3502,
-  "newRecords": 0,
-  "updatedRecords": 3502,
-  "syncState": {
-    "status": "idle",
-    "currentPage": 36,
-    "totalPages": 36,
-    "processed": 3502
-  },
-  "totalDate": 0,
-  "totalNew": 0,
-  "lastSyncNew": "2026-06-22T13:37:53.609Z",
-  "lastSyncDate": "2026-06-22T13:35:08.074Z",
-  "dateFrom": "2026-05-23",
-  "dateTo": null
-}
+{"lastSync":"2026-06-22T15:14:44.169Z","total":3502,"newRecords":0,"updatedRecords":3502,"syncState":{"status":"idle","currentPage":36,"totalPages":36,"processed":3402},"totalDate":0,"totalNew":0,"lastSyncNew":"2026-06-22T15:19:33.672Z","lastSyncDate":"2026-06-22T15:08:59.283Z","dateFrom":"2026-05-23","dateTo":null}

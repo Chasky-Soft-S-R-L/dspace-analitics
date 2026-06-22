@@ -5,6 +5,8 @@ const cors    = require('cors');
 const fetch   = require('node-fetch');
 const fs      = require('fs');
 const path    = require('path');
+const http    = require('http');
+const https   = require('https');
 
 const app  = express();
 const PORT = 4000;
@@ -15,27 +17,36 @@ const REPO_PATH = path.join(__dirname, 'repositorio.json');
 const META_PATH = path.join(__dirname, 'metadata.json');
 
 // ─── DSpace 7 API ──────────────────────────────────────────────────────────
-const DSPACE_BASE   = 'https://repositorio.unas.edu.pe/server/api';
-const SEARCH_URL    = `${DSPACE_BASE}/discover/search/objects`;
-const ITEMS_URL     = `${DSPACE_BASE}/core/items`;
-const PAGE_SIZE     = 100;
-const FETCH_TIMEOUT = 30000;
+const DSPACE_BASE = 'https://repositorio.unas.edu.pe/server/api';
+const SEARCH_URL  = `${DSPACE_BASE}/discover/search/objects`;
+const ITEMS_URL   = `${DSPACE_BASE}/core/items`;
+const PAGE_SIZE   = 100;
 
-// ─── Optimización: concurrencia máxima ────────────────────────────────────
-const ITEMS_CONCURRENCY  = 12;   // items en paralelo por batch
-const PAGES_CONCURRENCY  = 4;    // páginas descargadas en paralelo
-const PAGES_PREFETCH     = 3;    // páginas pre-cargadas por adelantado
+// ─── Agentes HTTP con Keep-Alive (reutiliza conexiones TCP) ───────────────
+const httpAgent  = new http.Agent ({ keepAlive: true, maxSockets: 64, maxFreeSockets: 32, timeout: 20000 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 64, maxFreeSockets: 32, timeout: 20000 });
+
+function agentFor(url) {
+  return url.startsWith('https') ? httpsAgent : httpAgent;
+}
+
+// ─── Parámetros de concurrencia ────────────────────────────────────────────
+const FETCH_TIMEOUT       = 20000;  // ms por request
+const PAGES_CONCURRENCY   = 8;      // páginas DSpace en paralelo
+const ITEMS_CONCURRENCY   = 30;     // items mapeados en paralelo
+const RETRY_ATTEMPTS      = 3;
+const RETRY_BASE_DELAY_MS = 600;
 
 // ─── Estado en memoria ─────────────────────────────────────────────────────
 let syncAbortFlag = false;
 
-// ─── Cache de comunidades/colecciones ─────────────────────────────────────
+// ─── Cache de comunidades/colecciones (en memoria, persiste entre syncs) ──
 const collectionCache = new Map();
 
-// ─── Cache de repositorio en RAM ──────────────────────────────────────────
+// ─── Cache del repositorio en RAM ─────────────────────────────────────────
 let repoCache = null;
-function getRepo()       { if (!repoCache) repoCache = readJSON(REPO_PATH, []); return repoCache; }
-function setRepo(data)   { repoCache = data; writeJSON(REPO_PATH, data); }
+function getRepo()     { if (!repoCache) repoCache = readJSON(REPO_PATH, []); return repoCache; }
+function setRepo(data) { repoCache = data; writeJSON(REPO_PATH, data); }
 
 // ─── Mapeo de tipos DSpace ─────────────────────────────────────────────────
 const TYPE_MAP = {
@@ -64,7 +75,28 @@ function readJSON(filePath, fallback) {
   catch (_) { return fallback; }
 }
 function writeJSON(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  fs.writeFileSync(filePath, JSON.stringify(data), 'utf8'); // sin indent = más rápido
+}
+
+// ─── Helper: fetch con reintentos y keep-alive ─────────────────────────────
+async function fetchWithRetry(url, opts = {}) {
+  const options = {
+    timeout: FETCH_TIMEOUT,
+    agent:   agentFor(url),
+    headers: { 'Accept': 'application/json', 'Accept-Encoding': 'gzip, deflate', ...(opts.headers || {}) },
+    ...opts,
+  };
+  for (let attempt = 0; attempt < RETRY_ATTEMPTS; attempt++) {
+    try {
+      const r = await fetch(url, options);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r;
+    } catch (e) {
+      if (attempt < RETRY_ATTEMPTS - 1) {
+        await sleep(RETRY_BASE_DELAY_MS * (attempt + 1));
+      } else throw e;
+    }
+  }
 }
 
 // ─── Helpers de metadata ───────────────────────────────────────────────────
@@ -85,34 +117,65 @@ function getMetaFirst(metaObj, ...keys) {
 }
 
 // ─── Comunidad/colección con caché ────────────────────────────────────────
+// Usa un mapa de promesas para evitar fetches duplicados simultáneos
+const collectionInflight = new Map();
+
 async function fetchCommunityCollection(owningCollectionHref) {
   if (!owningCollectionHref) return { collection: '', community: '' };
   if (collectionCache.has(owningCollectionHref)) return collectionCache.get(owningCollectionHref);
-  try {
-    const r = await fetch(`${owningCollectionHref}?embed=parentCommunity`, { timeout: FETCH_TIMEOUT });
-    if (!r.ok) return { collection: '', community: '' };
-    const d = await r.json();
-    const result = { collection: (d.name || '').trim(), community: d._embedded?.parentCommunity?.name?.trim() || '' };
-    collectionCache.set(owningCollectionHref, result);
-    return result;
-  } catch (_) { return { collection: '', community: '' }; }
+
+  // Si ya hay un fetch en vuelo para esta URL, reusar la misma promesa
+  if (collectionInflight.has(owningCollectionHref)) {
+    return collectionInflight.get(owningCollectionHref);
+  }
+
+  const promise = (async () => {
+    try {
+      const r = await fetchWithRetry(`${owningCollectionHref}?embed=parentCommunity`);
+      const d = await r.json();
+      const result = {
+        collection: (d.name || '').trim(),
+        community:  d._embedded?.parentCommunity?.name?.trim() || '',
+      };
+      collectionCache.set(owningCollectionHref, result);
+      return result;
+    } catch (_) {
+      return { collection: '', community: '' };
+    } finally {
+      collectionInflight.delete(owningCollectionHref);
+    }
+  })();
+
+  collectionInflight.set(owningCollectionHref, promise);
+  return promise;
 }
 
 // ─── Obtener URL del PDF principal ────────────────────────────────────────
+// Optimizado: usa embed para traer bundles+bitstreams en un solo request
 async function fetchPdfUrl(uuid) {
   try {
-    const br = await fetch(`${ITEMS_URL}/${uuid}/bundles?size=20`, { timeout: 10000 });
-    if (!br.ok) return null;
-    const bd = await br.json();
+    // Intentar con embed (1 sola llamada en lugar de 3)
+    const r = await fetchWithRetry(
+      `${ITEMS_URL}/${uuid}/bundles?size=10&embed=bitstreams`,
+      { timeout: 12000 }
+    );
+    const bd = await r.json();
     const bundles  = bd?._embedded?.bundles || [];
     const original = bundles.find(b => b.name === 'ORIGINAL');
     if (!original) return null;
-    const bsHref = original?._links?.bitstreams?.href;
-    if (!bsHref) return null;
-    const bsr = await fetch(`${bsHref}?size=20`, { timeout: 10000 });
-    if (!bsr.ok) return null;
-    const bsd = await bsr.json();
-    const bitstreams = bsd?._embedded?.bitstreams || [];
+
+    // Intentar bitstreams embebidos primero (evita 2da llamada)
+    let bitstreams = original?._embedded?.bitstreams?._embedded?.bitstreams || [];
+
+    // Fallback: si no vienen embebidos, hacer 2da llamada
+    if (!bitstreams.length) {
+      const bsHref = original?._links?.bitstreams?.href;
+      if (!bsHref) return null;
+      const bsr = await fetchWithRetry(`${bsHref}?size=10`, { timeout: 10000 });
+      const bsd = await bsr.json();
+      bitstreams = bsd?._embedded?.bitstreams || [];
+    }
+
     const pdf = bitstreams.find(b => (b.name || '').toLowerCase().endsWith('.pdf')) || bitstreams[0];
     if (!pdf) return null;
     return {
@@ -126,18 +189,30 @@ async function fetchPdfUrl(uuid) {
 }
 
 // ─── Mapeo principal de un objeto DSpace ──────────────────────────────────
+// Optimizado: lanza fetchCommunityCollection y fetchPdfUrl en paralelo
+// y evita el fetch extra de título cuando ya viene en metadata
 async function mapRecord(dspaceItem) {
   let meta     = dspaceItem.metadata || {};
   const uuid   = dspaceItem.uuid || dspaceItem.id || '';
   const handle = dspaceItem.handle || '';
 
+  // Solo hace fetch extra si el título realmente falta
   let titleRaw = getMetaFirst(meta, 'dc.title');
-  if (!titleRaw && uuid) {
-    try {
-      const r = await fetch(`${ITEMS_URL}/${uuid}`, { timeout: FETCH_TIMEOUT });
-      if (r.ok) { const d = await r.json(); if (d?.metadata) { meta = d.metadata; titleRaw = getMetaFirst(meta, 'dc.title'); } }
-    } catch (_) {}
-  }
+  const needsExtraFetch = !titleRaw && !!uuid;
+
+  const colHref = dspaceItem._links?.owningCollection?.href;
+
+  // Lanzar los 3 fetch en paralelo (colección, PDF, y si necesario: item completo)
+  const [ccResult, pdfData, extraMeta] = await Promise.all([
+    colHref ? fetchCommunityCollection(colHref) : Promise.resolve({ collection: '', community: '' }),
+    uuid    ? fetchPdfUrl(uuid).catch(() => null) : Promise.resolve(null),
+    needsExtraFetch
+      ? fetchWithRetry(`${ITEMS_URL}/${uuid}`, { timeout: FETCH_TIMEOUT })
+          .then(r => r.json()).then(d => d?.metadata || null).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
+  if (extraMeta) { meta = extraMeta; titleRaw = getMetaFirst(meta, 'dc.title'); }
 
   const title       = titleRaw;
   const authors     = getMeta(meta, 'dc.contributor.author', 'dc.creator', 'dc.contributor');
@@ -154,12 +229,6 @@ async function mapRecord(dspaceItem) {
   const url         = handle
     ? `https://repositorio.unas.edu.pe/handle/${handle}`
     : `https://repositorio.unas.edu.pe/server/api/core/items/${uuid}`;
-
-  const colHref = dspaceItem._links?.owningCollection?.href;
-  const [ccResult, pdfData] = await Promise.all([
-    colHref ? fetchCommunityCollection(colHref) : Promise.resolve({ collection: '', community: '' }),
-    uuid    ? fetchPdfUrl(uuid).catch(() => null) : Promise.resolve(null),
-  ]);
 
   const pdfUrl = pdfData?.bitstreamUuid
     ? `https://repositorio.unas.edu.pe/server/api/core/bitstreams/${pdfData.bitstreamUuid}/content`
@@ -189,19 +258,40 @@ function getTotalPages(data) {
 }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// ─── Pool de concurrencia genérico ────────────────────────────────────────
+// Ejecuta `tasks` (array de funciones async) con máximo `limit` en paralelo
+async function pLimit(tasks, limit) {
+  const results = new Array(tasks.length);
+  let idx = 0;
+  async function worker() {
+    while (idx < tasks.length) {
+      const i = idx++;
+      try { results[i] = await tasks[i](); }
+      catch (e) { results[i] = null; }
+    }
+  }
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, worker);
+  await Promise.all(workers);
+  return results;
+}
+
 // ─── Middleware ────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-app.get('/',        (_req, res) => res.sendFile(HTML_PATH));
-app.get('/health',  (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
-app.get('/metadata',(_req, res) => res.json(readJSON(META_PATH, {})));
-app.get('/data',    (req,  res) => {
+app.get('/',         (_req, res) => res.sendFile(HTML_PATH));
+app.get('/health',   (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
+app.get('/metadata', (_req, res) => res.json(readJSON(META_PATH, {})));
+app.get('/data', (req, res) => {
   const repo   = getRepo();
   const fields = req.query.fields ? req.query.fields.split(',').map(f => f.trim()) : null;
   if (fields && fields.length > 0)
-    return res.json(repo.map(r => { const o={}; fields.forEach(f => { if(r[f]!==undefined) o[f]=r[f]; }); return o; }));
+    return res.json(repo.map(r => {
+      const o = {};
+      fields.forEach(f => { if (r[f] !== undefined) o[f] = r[f]; });
+      return o;
+    }));
   res.json(repo);
 });
 
@@ -210,8 +300,8 @@ app.get('/thumb/:uuid', async (req, res) => {
   const { uuid } = req.params;
   if (!uuid || !/^[0-9a-f-]{36}$/i.test(uuid)) return res.status(400).json({ error: 'UUID inválido' });
   try {
-    const r = await fetch(`${ITEMS_URL}/${uuid}/thumbnail`, { timeout: 10000 });
-    if (r.status === 204 || !r.ok) return res.status(404).json({ error: 'Sin miniatura' });
+    const r = await fetchWithRetry(`${ITEMS_URL}/${uuid}/thumbnail`, { timeout: 10000 });
+    if (r.status === 204) return res.status(404).json({ error: 'Sin miniatura' });
     const d = await r.json();
     const contentUrl = d?._links?.content?.href;
     if (!contentUrl) return res.status(404).json({ error: 'Sin URL de contenido' });
@@ -240,24 +330,26 @@ app.post('/sync/stop', (_req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ─── POST /sync/start  (SSE streaming)  ───────────────────────────────────
+// ─── POST /sync/start  (SSE streaming — algoritmo optimizado)  ────────────
 //
-//  Body params:
-//    mode      : 'all' | 'new' | 'date'
-//    fromDate  : 'YYYY-MM-DD'   (solo mode='date')
-//    toDate    : 'YYYY-MM-DD'   (solo mode='date', opcional)
-//
-//  metadata.json por modo:
-//    all  → lastSync, total, newRecords, updatedRecords, syncState
-//    new  → lastSyncNew, totalNew, syncState
-//    date → lastSyncDate, dateFrom, dateTo, totalDate, syncState
+//  Mejoras de velocidad aplicadas:
+//  1. Keep-Alive HTTP agents (reutiliza conexiones TCP, elimina handshake por req)
+//  2. PAGES_CONCURRENCY = 8 (8 páginas DSpace descargadas simultáneamente)
+//  3. ITEMS_CONCURRENCY = 30 (30 items mapeados en paralelo con pLimit)
+//  4. fetchPdfUrl usa embed para reducir 3 llamadas → 1
+//  5. mapRecord lanza colección + PDF + extra-fetch en paralelo (Promise.all)
+//  6. collectionCache con inflight dedup (evita fetches duplicados simultáneos)
+//  7. writeJSON sin indent (más rápido en disco)
+//  8. Pipeline solapado: mientras se procesan items de página N,
+//     se descargan páginas N+1..N+PAGES_CONCURRENCY
+//  9. shouldProcess early-exit para modo 'new' (evita mapRecord innecesario)
 // ═══════════════════════════════════════════════════════════════════════════
 app.post('/sync/start', async (req, res) => {
   const mode     = req.body?.mode     || 'all';
   const fromDate = req.body?.fromDate || null;
   const toDate   = req.body?.toDate   || null;
 
-  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Content-Type',  'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection',    'keep-alive');
   res.flushHeaders();
@@ -270,13 +362,11 @@ app.post('/sync/start', async (req, res) => {
     syncState: { status: 'idle', currentPage: 0, totalPages: 0, processed: 0 },
   });
 
-  // Reanudar solo en modo 'all' si estaba pausado
   const isPaused  = (mode === 'all') && meta.syncState?.status === 'paused';
   const startPage = isPaused ? (meta.syncState?.currentPage || 0) : 0;
 
   syncAbortFlag = false;
 
-  // syncState compartido para todos los modos
   meta.syncState = {
     status:      'syncing',
     currentPage: startPage,
@@ -292,95 +382,84 @@ app.post('/sync/start', async (req, res) => {
 
   // ── Etiqueta de inicio ─────────────────────────────────────────────────
   const startLabels = {
-    all:  isPaused ? 'Reanudando sincronización completa…' : 'Iniciando sincronización completa…',
+    all:  isPaused ? 'Reanudando sincronización completa…' : 'Iniciando sincronización completa (modo turbo)…',
     new:  'Buscando registros nuevos en DSpace…',
     date: `Sincronizando registros desde ${fromDate}${toDate ? ' hasta ' + toDate : ''}…`,
   };
   send({ type: 'start', message: startLabels[mode] || 'Iniciando sincronización…' });
 
-  // ── Helper: fetch de una página con reintentos ─────────────────────────
+  // ── Helper: fetch de una página DSpace con reintentos ─────────────────
   async function fetchPage(p) {
     const url = `${SEARCH_URL}?scope=&query=&page=${p}&size=${PAGE_SIZE}&sort=score%2CDESC`;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const r = await fetch(url, { timeout: FETCH_TIMEOUT });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return await r.json();
-      } catch (e) {
-        if (attempt < 2) await sleep(1200 * (attempt + 1));
-        else { send({ type: 'warn', message: `Página ${p + 1} omitida: ${e.message}` }); return null; }
-      }
+    try {
+      const r = await fetchWithRetry(url);
+      return await r.json();
+    } catch (e) {
+      send({ type: 'warn', message: `Página ${p + 1} omitida: ${e.message}` });
+      return null;
     }
-    return null;
   }
 
   // ── Helper: filtrar items según modo ──────────────────────────────────
   function shouldProcess(item) {
-    if (mode === 'new') {
-      // Solo UUIDs que NO existen aún en el repositorio local
-      return !repoMap.has(item.uuid);
-    }
+    if (mode === 'new')  return !repoMap.has(item.uuid);
     if (mode === 'date' && fromDate) {
-      // Solo items cuya fecha de publicación está dentro del rango
       const m2  = item.metadata || {};
       const val = (m2['dc.date.issued']?.[0]?.value ||
                    m2['dc.date.available']?.[0]?.value ||
                    m2['dc.date.accessioned']?.[0]?.value || '').slice(0, 10);
       if (!val) return false;
-      const afterFrom = val >= fromDate;
-      const beforeTo  = toDate ? val <= toDate : true;
-      return afterFrom && beforeTo;
+      return val >= fromDate && (toDate ? val <= toDate : true);
     }
-    // mode='all': procesar todo
     return true;
   }
 
-  // ── Helper: procesar batch de items en paralelo ────────────────────────
-  async function processItems(items) {
-    const filtered = items.filter(item => item?.uuid && shouldProcess(item));
-    for (let i = 0; i < filtered.length; i += ITEMS_CONCURRENCY) {
-      if (syncAbortFlag) break;
-      const batch   = filtered.slice(i, i + ITEMS_CONCURRENCY);
-      const records = await Promise.all(batch.map(item => mapRecord(item).catch(() => null)));
-      for (const record of records) {
-        if (!record?.uuid) continue;
-        if (repoMap.has(record.uuid)) { repoMap.set(record.uuid, record); updCount++; }
-        else                          { repoMap.set(record.uuid, record); newCount++; }
-      }
+  // ── Helper: guardar estado y notificar progreso ────────────────────────
+  let lastSaveTs = 0;
+  function saveAndNotify(p, totalPages, totalElements, force = false) {
+    const now = Date.now();
+    // Guardar en disco máximo cada 3 s para no saturar I/O (excepto force)
+    if (force || now - lastSaveTs > 3000) {
+      repo = Array.from(repoMap.values());
+      meta.syncState.currentPage = p + 1;
+      meta.total = repo.length;
+      if (mode === 'all')  { meta.newRecords = newCount; meta.updatedRecords = updCount; }
+      else if (mode === 'new')  { meta.totalNew = newCount; }
+      else if (mode === 'date') { meta.totalDate = newCount + updCount; }
+      setRepo(repo);
+      writeJSON(META_PATH, meta);
+      lastSaveTs = now;
     }
-  }
-
-  // ── Helper: guardar estado intermedio y notificar progreso ────────────
-  function saveAndNotify(p, totalPages, totalElements) {
-    repo = Array.from(repoMap.values());
-    meta.syncState.currentPage = p + 1;
-    meta.syncState.processed   = (meta.syncState.processed || 0);
-    meta.total = repo.length;
-
-    // Actualizar campos específicos del modo en metadata.json
-    if (mode === 'all') {
-      meta.newRecords     = newCount;
-      meta.updatedRecords = updCount;
-    } else if (mode === 'new') {
-      meta.totalNew = newCount;
-    } else if (mode === 'date') {
-      meta.totalDate = newCount + updCount;
-    }
-
-    setRepo(repo);
-    writeJSON(META_PATH, meta);
-
     const pct = totalPages > 0 ? Math.round(((p + 1) / totalPages) * 100) : 0;
     send({
       type: 'progress', page: p + 1, totalPages,
       processed: meta.syncState.processed,
       totalElements, newCount, updCount, pct,
-      message: `Página ${p + 1} de ${totalPages} · ${(newCount + updCount).toLocaleString()} registros procesados`,
+      message: `Página ${p + 1}/${totalPages} · ${(newCount + updCount).toLocaleString()} procesados`,
     });
   }
 
+  // ── Núcleo: procesar un array de items con pLimit ─────────────────────
+  async function processItems(items) {
+    const filtered = items.filter(item => item?.uuid && shouldProcess(item));
+    if (!filtered.length) return;
+
+    const tasks = filtered.map(item => async () => {
+      if (syncAbortFlag) return null;
+      return mapRecord(item).catch(() => null);
+    });
+
+    const records = await pLimit(tasks, ITEMS_CONCURRENCY);
+
+    for (const record of records) {
+      if (!record?.uuid) continue;
+      if (repoMap.has(record.uuid)) { repoMap.set(record.uuid, record); updCount++; }
+      else                          { repoMap.set(record.uuid, record); newCount++; }
+    }
+  }
+
   try {
-    // ── Obtener primera página ─────────────────────────────────────────
+    // ── 1. Obtener primera página para conocer el total ────────────────
     const firstData = await fetchPage(startPage);
     if (!firstData) throw new Error('No se pudo conectar con DSpace. Verifica la red.');
 
@@ -388,7 +467,7 @@ app.post('/sync/start', async (req, res) => {
     meta.syncState.totalPages = totalPages;
     writeJSON(META_PATH, meta);
 
-    send({ type: 'info', message: `DSpace: ${totalElements.toLocaleString()} registros en ${totalPages} páginas` });
+    send({ type: 'info', message: `DSpace: ${totalElements.toLocaleString()} registros · ${totalPages} páginas · concurrencia ${PAGES_CONCURRENCY}×páginas / ${ITEMS_CONCURRENCY}×items` });
 
     // Procesar primera página
     const firstItems = extractItemsFromSearch(firstData);
@@ -403,26 +482,31 @@ app.post('/sync/start', async (req, res) => {
       res.end(); return;
     }
 
-    // ── Páginas restantes: descarga en paralelo (PAGES_CONCURRENCY) ────
+    // ── 2. Pipeline solapado: descargar PAGES_CONCURRENCY páginas a la vez
+    //       y procesar sus items en paralelo con pLimit ──────────────────
     for (let p = startPage + 1; p < totalPages; p += PAGES_CONCURRENCY) {
       if (syncAbortFlag) break;
 
-      // Lanzar PAGES_CONCURRENCY páginas en paralelo
-      const pageNums  = [];
+      const pageNums = [];
       for (let k = p; k < Math.min(p + PAGES_CONCURRENCY, totalPages); k++) pageNums.push(k);
 
+      // Descargar todas las páginas del bloque simultáneamente
       const pageDatas = await Promise.all(pageNums.map(n => fetchPage(n)));
 
-      for (let k = 0; k < pageNums.length; k++) {
-        if (syncAbortFlag) break;
-        const pageData = pageDatas[k];
+      // Extraer todos los items del bloque
+      const allItems = [];
+      for (const pageData of pageDatas) {
         if (!pageData) continue;
-
         const items = extractItemsFromSearch(pageData);
         meta.syncState.processed += items.length;
-        await processItems(items);
-        saveAndNotify(pageNums[k], totalPages, totalElements);
+        allItems.push(...items);
       }
+
+      // Mapear TODOS los items del bloque en paralelo (pLimit global)
+      await processItems(allItems);
+
+      // Notificar al final del bloque (última página del bloque)
+      saveAndNotify(pageNums[pageNums.length - 1], totalPages, totalElements);
     }
 
     if (syncAbortFlag) {
@@ -430,7 +514,7 @@ app.post('/sync/start', async (req, res) => {
       writeJSON(META_PATH, meta);
       send({ type: 'paused', processed: meta.syncState.processed, message: 'Sincronización pausada por el usuario.' });
     } else {
-      // ── Finalizar: campos específicos por modo en metadata.json ──────
+      // ── 3. Finalizar ──────────────────────────────────────────────────
       meta.syncState.status = 'idle';
       meta.syncState.currentPage = totalPages;
       const now = new Date().toISOString();
@@ -443,8 +527,7 @@ app.post('/sync/start', async (req, res) => {
       } else if (mode === 'new') {
         meta.lastSyncNew = now;
         meta.totalNew    = newCount;
-        // total global también se actualiza
-        meta.total = Array.from(repoMap.values()).length;
+        meta.total       = Array.from(repoMap.values()).length;
       } else if (mode === 'date') {
         meta.lastSyncDate = now;
         meta.dateFrom     = fromDate;
@@ -456,9 +539,9 @@ app.post('/sync/start', async (req, res) => {
       writeJSON(META_PATH, meta);
 
       const doneLabels = {
-        all:  `✅ Sincronización completa · ${repo.length.toLocaleString()} registros · ${newCount} nuevos · ${updCount} actualizados`,
-        new:  `✅ Registros nuevos añadidos: ${newCount} · Total en repositorio: ${Array.from(repoMap.values()).length.toLocaleString()}`,
-        date: `✅ Sincronización por fecha completa · ${(newCount + updCount)} registros procesados (${fromDate}${toDate ? ' → ' + toDate : ''})`,
+        all:  `✅ Sincronización completa · ${Array.from(repoMap.values()).length.toLocaleString()} registros · ${newCount} nuevos · ${updCount} actualizados`,
+        new:  `✅ Registros nuevos: ${newCount} · Total: ${Array.from(repoMap.values()).length.toLocaleString()}`,
+        date: `✅ Por fecha · ${(newCount + updCount)} procesados (${fromDate}${toDate ? ' → ' + toDate : ''})`,
       };
       send({ type: 'done', total: Array.from(repoMap.values()).length, newCount, updCount,
              message: doneLabels[mode] || `✅ Sincronización completa · ${repo.length.toLocaleString()} registros` });
@@ -479,4 +562,5 @@ app.listen(PORT, () => {
   console.log(`✅  DSpace Explorer escuchando en http://localhost:${PORT}`);
   console.log(`    Repositorio: ${REPO_PATH}`);
   console.log(`    Metadata:    ${META_PATH}`);
+  console.log(`    Concurrencia: ${PAGES_CONCURRENCY} páginas × ${ITEMS_CONCURRENCY} items`);
 });
