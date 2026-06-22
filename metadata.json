@@ -1,12 +1,18 @@
 {
-  "lastSync": "2026-06-22T05:40:42.539Z",
+  "lastSync": "2026-06-22T13:59:57.295Z",
   "total": 3502,
   "newRecords": 0,
-  "updatedRecords": 0,
+  "updatedRecords": 3502,
   "syncState": {
-    "status": "syncing",
-    "currentPage": 3,
+    "status": "idle",
+    "currentPage": 36,
     "totalPages": 36,
-    "processed": 300
-  }
+    "processed": 3502
+  },
+  "totalDate": 0,
+  "totalNew": 0,
+  "lastSyncNew": "2026-06-22T13:37:53.609Z",
+  "lastSyncDate": "2026-06-22T13:35:08.074Z",
+  "dateFrom": "2026-05-23",
+  "dateTo": null
 }

@@ -864,7 +864,7 @@
       <div id="unas-loading-bar-fill"></div>
     </div>
     <div id="unas-loading-percent">0%</div>
-    <div id="unas-loading-status" style="margin-top:10px;font-size:.78rem;color:rgba(255,255,255,.65);letter-spacing:.02em;min-height:1.2em;transition:opacity .3s;">Iniciando aplicación…</div>
+    <div id="unas-loading-status" style="margin-top:10px;font-size:.78rem;color:#4ade80;letter-spacing:.02em;min-height:1.2em;transition:opacity .3s;">Iniciando aplicación…</div>
   </div>
   <!-- ════════════════════════════════════════════════════════════════ -->
 
@@ -1606,6 +1606,15 @@
         <input id="autoresSearch" type="text" placeholder="Buscar en resultados…"
           class="filter-select" style="width:176px;"
           oninput="renderAutoresTable()" />
+        <button id="btnExportarTesisExcel" onclick="exportarTesisExcel()"
+          title="Exportar Listado de Tesis a Excel"
+          style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid #bbf7d0;background:#f0fdf4;color:#15803d;font-size:.78rem;font-weight:700;cursor:pointer;transition:background .18s,border-color .18s;white-space:nowrap;"
+          onmouseover="this.style.background='#dcfce7';this.style.borderColor='#4ade80';"
+          onmouseout="this.style.background='#f0fdf4';this.style.borderColor='#bbf7d0';">
+          <i class="fa-solid fa-file-excel" style="color:#16a34a;font-size:.85rem;"></i>
+          Exportar Excel
+          <span id="autoresExcelCount" style="background:#bbf7d0;color:#166534;font-size:.68rem;font-weight:800;padding:1px 7px;border-radius:999px;">0</span>
+        </button>
       </div>
     </div>
     <div class="overflow-x-auto">
@@ -1779,7 +1788,7 @@ function handleSyncBtn() {
 }
 
 // ─── Iniciar / Continuar sync ────────────────────────────────────────────────
-function startSync() {
+function startSync(opts) {
   syncStatus = 'syncing';
   renderBtnSync();
   const panel = document.getElementById('progressPanel');
@@ -1790,7 +1799,14 @@ function startSync() {
   document.getElementById('pUpd').textContent = '0';
   document.getElementById('pPct').textContent = '0%';
 
-  fetch('/sync/start', { method: 'POST' })
+  fetch('/sync/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: (opts && opts.mode) ? opts.mode : 'all',
+          fromDate: (opts && opts.fromDate) ? opts.fromDate : null
+        })
+      })
     .then(resp => {
       const reader  = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -3415,6 +3431,8 @@ function renderAutoresTable() {
   const nextBtn = document.getElementById('autoresNextBtn');
 
   if (countEl) countEl.textContent = total.toLocaleString('es-PE');
+  const excelCountEl = document.getElementById('autoresExcelCount');
+  if (excelCountEl) excelCountEl.textContent = total.toLocaleString('es-PE');
   if (pagEl)   pagEl.textContent   =
     `Mostrando ${start + 1}\u2013${Math.min(start + AUTORES_PER_PAGE, total)} de ${total.toLocaleString('es-PE')}`;
   if (prevBtn) prevBtn.disabled = _autoresPage <= 1;
@@ -3472,6 +3490,70 @@ function renderAutoresTable() {
   }).join('');
 }
 
+// ── Exportar Listado de Tesis a Excel ────────────────────────────────────────
+function exportarTesisExcel() {
+  const searchVal = (document.getElementById('autoresSearch')?.value || '').toLowerCase().trim();
+
+  let rows = _autoresFiltered.filter(item => {
+    if (!searchVal) return true;
+    return (
+      (item.title      || '').toLowerCase().includes(searchVal) ||
+      (item.authors    || '').toLowerCase().includes(searchVal) ||
+      (item.advisors   || '').toLowerCase().includes(searchVal) ||
+      (item.community  || '').toLowerCase().includes(searchVal) ||
+      (item.collection || '').toLowerCase().includes(searchVal) ||
+      (item.date       || '').toLowerCase().includes(searchVal)
+    );
+  });
+
+  if (rows.length === 0) {
+    mostrarToast('No hay registros para exportar.', 'warning');
+    return;
+  }
+
+  const wsData = [
+    ['Facultad', 'Especialidad', 'Titulo', 'Autor(es)', 'Asesor(es)',
+     'Resumen', 'Anio de Publicacion', 'Tipo', 'Temas', 'Idioma',
+     'URL Repositorio', 'URL PDF']
+  ];
+
+  rows.forEach(item => {
+    wsData.push([
+      item.community  || '',
+      item.collection || '',
+      item.title      || '',
+      item.authors    || '',
+      item.advisors   || '',
+      item.abstract   || '',
+      item.date ? String(item.date).slice(0, 4) : '',
+      item.type       || '',
+      Array.isArray(item.topics) ? item.topics.join('; ') : (item.topics || ''),
+      item.language   || '',
+      item.url        || '',
+      item.pdfUrl     || ''
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  const colWidths = wsData[0].map((_, colIdx) => {
+    const maxLen = wsData.reduce((max, row) => {
+      const cellVal = row[colIdx] ? String(row[colIdx]) : '';
+      return Math.max(max, cellVal.length);
+    }, 10);
+    return { wch: Math.min(maxLen + 2, 80) };
+  });
+  ws['!cols'] = colWidths;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Listado de Tesis');
+
+  const today = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, 'asesores_tesis_' + today + '.xlsx');
+
+  mostrarToast('Exportados ' + rows.length + ' registros a Excel.', 'success');
+}
+
 // ── Cambio de página ──────────────────────────────────────────────────────
 function autoresChangePage(delta) {
   _autoresPage += delta;
@@ -3485,7 +3567,7 @@ function autoresChangePage(delta) {
 
   <!-- Panel de dropdown eliminado: reemplazado por búsqueda libre -->
 
-  <!-- ── Modal de contraseña para Sincronizar ─────────────────────────── -->
+  <!-- ══ Modal contraseña para Sincronizar ═══════════════════════════════ -->
   <div id="syncPasswordModal" style="
     display:none;position:fixed;inset:0;z-index:9999;
     background:rgba(15,23,42,.55);backdrop-filter:blur(4px);
@@ -3541,17 +3623,17 @@ function autoresChangePage(delta) {
     </div>
   </div>
 
-  <!-- ── Modal de opciones de Sincronización ───────────────────────────── -->
+  <!-- ══ Modal opciones de Sincronización (3 opciones) ═════════════════════ -->
   <div id="syncOptionsModal" style="
     display:none;position:fixed;inset:0;z-index:9999;
     background:rgba(15,23,42,.55);backdrop-filter:blur(4px);
     align-items:center;justify-content:center;">
     <div style="
       background:#fff;border-radius:20px;padding:28px 24px 24px;
-      width:100%;max-width:440px;margin:16px;
+      width:100%;max-width:420px;margin:16px;
       box-shadow:0 24px 60px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);
       animation:slideDown .28s cubic-bezier(.22,1,.36,1) both;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
         <div style="display:flex;align-items:center;gap:12px;">
           <span style="display:inline-flex;align-items:center;justify-content:center;
             width:42px;height:42px;border-radius:12px;
@@ -3570,137 +3652,119 @@ function autoresChangePage(delta) {
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
 
+      <div style="display:flex;flex-direction:column;gap:10px;">
+
+        <!-- Sincronizar Todo -->
         <button onclick="executeSyncOption('all')" style="
-          display:flex;align-items:center;gap:10px;padding:14px 12px;
-          border-radius:12px;border:1.5px solid #dcfce7;background:#f0fdf4;
-          cursor:pointer;text-align:left;transition:all .2s;"
-          onmouseover="this.style.background='#dcfce7';this.style.borderColor='#22c55e'"
-          onmouseout="this.style.background='#f0fdf4';this.style.borderColor='#dcfce7'">
+          display:flex;align-items:center;gap:14px;padding:16px 14px;
+          border-radius:13px;border:1.5px solid #dcfce7;background:#f0fdf4;
+          cursor:pointer;text-align:left;transition:all .18s;width:100%;"
+          onmouseover="this.style.background='#dcfce7';this.style.borderColor='#22c55e';this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.background='#f0fdf4';this.style.borderColor='#dcfce7';this.style.transform='none'">
           <span style="display:inline-flex;align-items:center;justify-content:center;
-            width:36px;height:36px;border-radius:10px;background:#22c55e;flex-shrink:0;">
-            <i class="fa-solid fa-database" style="color:#fff;font-size:.9rem;"></i>
+            width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#166534,#22c55e);flex-shrink:0;">
+            <i class="fa-solid fa-database" style="color:#fff;font-size:1rem;"></i>
           </span>
-          <div>
-            <div style="font-size:.85rem;font-weight:700;color:#166534;">Sincronizar Todo</div>
-            <div style="font-size:.72rem;color:#4ade80;">Todos los registros</div>
+          <div style="flex:1;">
+            <div style="font-size:.92rem;font-weight:700;color:#166534;">Sincronizar Todo</div>
+            <div style="font-size:.77rem;color:#4ade80;margin-top:2px;">Descarga y actualiza todos los registros de DSpace</div>
           </div>
+          <i class="fa-solid fa-chevron-right" style="color:#86efac;font-size:.8rem;"></i>
         </button>
 
+        <!-- Solo Registros Nuevos -->
         <button onclick="executeSyncOption('new')" style="
-          display:flex;align-items:center;gap:10px;padding:14px 12px;
-          border-radius:12px;border:1.5px solid #dbeafe;background:#eff6ff;
-          cursor:pointer;text-align:left;transition:all .2s;"
-          onmouseover="this.style.background='#dbeafe';this.style.borderColor='#3b82f6'"
-          onmouseout="this.style.background='#eff6ff';this.style.borderColor='#dbeafe'">
+          display:flex;align-items:center;gap:14px;padding:16px 14px;
+          border-radius:13px;border:1.5px solid #dbeafe;background:#eff6ff;
+          cursor:pointer;text-align:left;transition:all .18s;width:100%;"
+          onmouseover="this.style.background='#dbeafe';this.style.borderColor='#3b82f6';this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.background='#eff6ff';this.style.borderColor='#dbeafe';this.style.transform='none'">
           <span style="display:inline-flex;align-items:center;justify-content:center;
-            width:36px;height:36px;border-radius:10px;background:#3b82f6;flex-shrink:0;">
-            <i class="fa-solid fa-plus-circle" style="color:#fff;font-size:.9rem;"></i>
+            width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);flex-shrink:0;">
+            <i class="fa-solid fa-plus-circle" style="color:#fff;font-size:1rem;"></i>
           </span>
-          <div>
-            <div style="font-size:.85rem;font-weight:700;color:#1d4ed8;">Registros Nuevos</div>
-            <div style="font-size:.72rem;color:#60a5fa;">Solo incorporaciones</div>
+          <div style="flex:1;">
+            <div style="font-size:.92rem;font-weight:700;color:#1d4ed8;">Solo Registros Nuevos</div>
+            <div style="font-size:.77rem;color:#60a5fa;margin-top:2px;">Solo añade ítems que aún no existen en el repositorio local</div>
           </div>
+          <i class="fa-solid fa-chevron-right" style="color:#93c5fd;font-size:.8rem;"></i>
         </button>
 
-        <button onclick="executeSyncOption('modified')" style="
-          display:flex;align-items:center;gap:10px;padding:14px 12px;
-          border-radius:12px;border:1.5px solid #fef9c3;background:#fefce8;
-          cursor:pointer;text-align:left;transition:all .2s;"
-          onmouseover="this.style.background='#fef9c3';this.style.borderColor='#eab308'"
-          onmouseout="this.style.background='#fefce8';this.style.borderColor='#fef9c3'">
-          <span style="display:inline-flex;align-items:center;justify-content:center;
-            width:36px;height:36px;border-radius:10px;background:#eab308;flex-shrink:0;">
-            <i class="fa-solid fa-pen-to-square" style="color:#fff;font-size:.9rem;"></i>
-          </span>
-          <div>
-            <div style="font-size:.85rem;font-weight:700;color:#a16207;">Registros Modificados</div>
-            <div style="font-size:.72rem;color:#facc15;">Cambios recientes</div>
-          </div>
-        </button>
-
-        <button onclick="executeSyncOption('deleted')" style="
-          display:flex;align-items:center;gap:10px;padding:14px 12px;
-          border-radius:12px;border:1.5px solid #fee2e2;background:#fff5f5;
-          cursor:pointer;text-align:left;transition:all .2s;"
-          onmouseover="this.style.background='#fee2e2';this.style.borderColor='#ef4444'"
-          onmouseout="this.style.background='#fff5f5';this.style.borderColor='#fee2e2'">
-          <span style="display:inline-flex;align-items:center;justify-content:center;
-            width:36px;height:36px;border-radius:10px;background:#ef4444;flex-shrink:0;">
-            <i class="fa-solid fa-trash-can" style="color:#fff;font-size:.9rem;"></i>
-          </span>
-          <div>
-            <div style="font-size:.85rem;font-weight:700;color:#b91c1c;">Registros Eliminados</div>
-            <div style="font-size:.72rem;color:#f87171;">Limpiar bajas</div>
-          </div>
-        </button>
-
+        <!-- Por Rango de Fechas -->
         <button onclick="openSyncByDateModal()" style="
-          display:flex;align-items:center;gap:10px;padding:14px 12px;
-          border-radius:12px;border:1.5px solid #ede9fe;background:#faf5ff;
-          cursor:pointer;text-align:left;transition:all .2s;"
-          onmouseover="this.style.background='#ede9fe';this.style.borderColor='#8b5cf6'"
-          onmouseout="this.style.background='#faf5ff';this.style.borderColor='#ede9fe'">
+          display:flex;align-items:center;gap:14px;padding:16px 14px;
+          border-radius:13px;border:1.5px solid #ede9fe;background:#faf5ff;
+          cursor:pointer;text-align:left;transition:all .18s;width:100%;"
+          onmouseover="this.style.background='#ede9fe';this.style.borderColor='#8b5cf6';this.style.transform='translateY(-1px)'"
+          onmouseout="this.style.background='#faf5ff';this.style.borderColor='#ede9fe';this.style.transform='none'">
           <span style="display:inline-flex;align-items:center;justify-content:center;
-            width:36px;height:36px;border-radius:10px;background:#8b5cf6;flex-shrink:0;">
-            <i class="fa-solid fa-calendar-days" style="color:#fff;font-size:.9rem;"></i>
+            width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#6d28d9,#8b5cf6);flex-shrink:0;">
+            <i class="fa-solid fa-calendar-days" style="color:#fff;font-size:1rem;"></i>
           </span>
-          <div>
-            <div style="font-size:.85rem;font-weight:700;color:#6d28d9;">Sincronizar por Fecha</div>
-            <div style="font-size:.72rem;color:#a78bfa;">Rango personalizado</div>
+          <div style="flex:1;">
+            <div style="font-size:.92rem;font-weight:700;color:#6d28d9;">Por Rango de Fechas</div>
+            <div style="font-size:.77rem;color:#a78bfa;margin-top:2px;">Sincroniza solo ítems publicados en un rango de fechas</div>
           </div>
-        </button>
-
-        <button onclick="executeSyncOption('export')" style="
-          display:flex;align-items:center;gap:10px;padding:14px 12px;
-          border-radius:12px;border:1.5px solid #ccfbf1;background:#f0fdfa;
-          cursor:pointer;text-align:left;transition:all .2s;"
-          onmouseover="this.style.background='#ccfbf1';this.style.borderColor='#14b8a6'"
-          onmouseout="this.style.background='#f0fdfa';this.style.borderColor='#ccfbf1'">
-          <span style="display:inline-flex;align-items:center;justify-content:center;
-            width:36px;height:36px;border-radius:10px;background:#14b8a6;flex-shrink:0;">
-            <i class="fa-solid fa-file-export" style="color:#fff;font-size:.9rem;"></i>
-          </span>
-          <div>
-            <div style="font-size:.85rem;font-weight:700;color:#0f766e;">Exportar y Sincronizar</div>
-            <div style="font-size:.72rem;color:#2dd4bf;">Exportar + sincronizar</div>
-          </div>
+          <i class="fa-solid fa-chevron-right" style="color:#c4b5fd;font-size:.8rem;"></i>
         </button>
 
       </div>
     </div>
   </div>
 
-  <!-- ── Modal selector de fecha ────────────────────────────────────────── -->
+  <!-- ══ Modal selector de rango de fechas ═════════════════════════════════ -->
   <div id="syncByDateModal" style="
     display:none;position:fixed;inset:0;z-index:10000;
     background:rgba(15,23,42,.65);backdrop-filter:blur(4px);
     align-items:center;justify-content:center;">
     <div style="
       background:#fff;border-radius:18px;padding:28px 24px 22px;
-      width:100%;max-width:360px;margin:16px;
+      width:100%;max-width:380px;margin:16px;
       box-shadow:0 24px 60px rgba(0,0,0,.2);
       animation:slideDown .28s cubic-bezier(.22,1,.36,1) both;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
         <span style="display:inline-flex;align-items:center;justify-content:center;
-          width:40px;height:40px;border-radius:11px;background:#8b5cf6;">
+          width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#6d28d9,#8b5cf6);">
           <i class="fa-solid fa-calendar-days" style="color:#fff;font-size:1rem;"></i>
         </span>
         <div>
-          <h3 style="margin:0;font-size:1rem;font-weight:700;color:#0f172a;">Sincronizar por Fecha</h3>
-          <p style="margin:0;font-size:.78rem;color:#64748b;">Selecciona la fecha de inicio</p>
+          <h3 style="margin:0;font-size:1rem;font-weight:700;color:#0f172a;">Rango de Fechas</h3>
+          <p style="margin:0;font-size:.78rem;color:#64748b;">Sincroniza registros publicados en el rango indicado</p>
         </div>
       </div>
-      <label style="display:block;font-size:.83rem;font-weight:600;color:#374151;margin-bottom:6px;">
-        Desde la fecha:
-      </label>
-      <input id="syncFromDate" type="date"
-        style="width:100%;box-sizing:border-box;padding:10px 12px;
-          border:1.5px solid #e2e8f0;border-radius:10px;font-size:.93rem;
-          outline:none;margin-bottom:18px;"
-        onfocus="this.style.borderColor='#8b5cf6'"
-        onblur="this.style.borderColor='#e2e8f0'" />
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+        <div>
+          <label style="display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:5px;">
+            <i class="fa-solid fa-calendar-plus" style="color:#8b5cf6;margin-right:4px;"></i>Desde
+          </label>
+          <input id="syncFromDate" type="date"
+            style="width:100%;box-sizing:border-box;padding:9px 10px;
+              border:1.5px solid #e2e8f0;border-radius:9px;font-size:.88rem;outline:none;"
+            onfocus="this.style.borderColor='#8b5cf6'"
+            onblur="this.style.borderColor='#e2e8f0'" />
+        </div>
+        <div>
+          <label style="display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:5px;">
+            <i class="fa-solid fa-calendar-check" style="color:#8b5cf6;margin-right:4px;"></i>Hasta
+          </label>
+          <input id="syncToDate" type="date"
+            style="width:100%;box-sizing:border-box;padding:9px 10px;
+              border:1.5px solid #e2e8f0;border-radius:9px;font-size:.88rem;outline:none;"
+            onfocus="this.style.borderColor='#8b5cf6'"
+            onblur="this.style.borderColor='#e2e8f0'" />
+        </div>
+      </div>
+      <p style="font-size:.75rem;color:#94a3b8;margin:0 0 16px;text-align:center;">
+        <i class="fa-solid fa-circle-info"></i> Deja "Hasta" vacío para sincronizar hasta hoy
+      </p>
+
+      <div id="syncDateError" style="display:none;color:#ef4444;font-size:.8rem;
+        margin-bottom:12px;text-align:center;">
+        <i class="fa-solid fa-circle-exclamation"></i> Selecciona al menos la fecha de inicio
+      </div>
+
       <div style="display:flex;gap:10px;">
         <button onclick="closeSyncByDateModal()" style="
           flex:1;padding:10px;border-radius:10px;border:1.5px solid #e2e8f0;
@@ -3711,14 +3775,14 @@ function autoresChangePage(delta) {
           flex:1;padding:10px;border-radius:10px;border:none;
           background:linear-gradient(135deg,#6d28d9,#8b5cf6);
           color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;">
-          Sincronizar
+          <i class="fa-solid fa-rotate" style="margin-right:5px;"></i>Sincronizar
         </button>
       </div>
     </div>
   </div>
 
   <script>
-  // ── Contraseña modal para Sincronizar ──────────────────────────────────
+  // ══ Contraseña modal ═══════════════════════════════════════════════════════
   function openSyncPasswordModal() {
     const m = document.getElementById('syncPasswordModal');
     m.style.display = 'flex';
@@ -3732,13 +3796,8 @@ function autoresChangePage(delta) {
   function toggleSyncPwdVisibility() {
     const inp  = document.getElementById('syncPwdInput');
     const icon = document.getElementById('syncPwdEyeIcon');
-    if (inp.type === 'password') {
-      inp.type = 'text';
-      icon.className = 'fa-solid fa-eye-slash';
-    } else {
-      inp.type = 'password';
-      icon.className = 'fa-solid fa-eye';
-    }
+    if (inp.type === 'password') { inp.type = 'text';     icon.className = 'fa-solid fa-eye-slash'; }
+    else                         { inp.type = 'password'; icon.className = 'fa-solid fa-eye'; }
   }
   function confirmSyncPassword() {
     const val = document.getElementById('syncPwdInput').value;
@@ -3754,52 +3813,43 @@ function autoresChangePage(delta) {
     }
   }
 
-  // ── Modal de opciones de sincronización ───────────────────────────────
-  function openSyncOptionsModal() {
-    document.getElementById('syncOptionsModal').style.display = 'flex';
-  }
-  function closeSyncOptionsModal() {
-    document.getElementById('syncOptionsModal').style.display = 'none';
-  }
+  // ══ Modal opciones ═════════════════════════════════════════════════════════
+  function openSyncOptionsModal()  { document.getElementById('syncOptionsModal').style.display = 'flex'; }
+  function closeSyncOptionsModal() { document.getElementById('syncOptionsModal').style.display = 'none'; }
 
-  // ── Modal selector de fecha ────────────────────────────────────────────
+  // ══ Modal rango de fechas ══════════════════════════════════════════════════
   function openSyncByDateModal() {
     closeSyncOptionsModal();
     const m = document.getElementById('syncByDateModal');
     m.style.display = 'flex';
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('syncFromDate').value = today;
+    // Precargar: fromDate = hace 30 días, toDate = hoy
+    const today = new Date();
+    const from  = new Date(today); from.setDate(from.getDate() - 30);
+    document.getElementById('syncFromDate').value = from.toISOString().split('T')[0];
+    document.getElementById('syncToDate').value   = today.toISOString().split('T')[0];
+    document.getElementById('syncDateError').style.display = 'none';
   }
   function closeSyncByDateModal() {
     document.getElementById('syncByDateModal').style.display = 'none';
   }
   function confirmSyncByDate() {
-    const date = document.getElementById('syncFromDate').value;
-    if (!date) { alert('Por favor selecciona una fecha.'); return; }
+    const fromDate = document.getElementById('syncFromDate').value;
+    const toDate   = document.getElementById('syncToDate').value || null;
+    if (!fromDate) {
+      document.getElementById('syncDateError').style.display = 'block';
+      return;
+    }
     closeSyncByDateModal();
-    startSync({ mode: 'date', fromDate: date });
+    startSync({ mode: 'date', fromDate, toDate });
   }
 
-  // ── Ejecutar opción de sincronización ─────────────────────────────────
+  // ══ Ejecutar opción ════════════════════════════════════════════════════════
   function executeSyncOption(mode) {
     closeSyncOptionsModal();
-    if (typeof startSync === 'function') {
-      startSync({ mode: mode });
-    } else {
-      const labels = {
-        all:      'Sincronizando todos los registros…',
-        new:      'Sincronizando registros nuevos…',
-        modified: 'Sincronizando registros modificados…',
-        deleted:  'Sincronizando registros eliminados…',
-        export:   'Exportando y sincronizando…'
-      };
-      const msg = labels[mode] || 'Sincronizando…';
-      if (typeof showToast === 'function') showToast(msg, 'info');
-      else alert(msg);
-    }
+    startSync({ mode });
   }
 
-  // ── Cerrar modales al hacer clic fuera ────────────────────────────────
+  // ══ Cerrar modales al hacer clic fuera ════════════════════════════════════
   document.addEventListener('click', function(e) {
     const pwdModal  = document.getElementById('syncPasswordModal');
     const optsModal = document.getElementById('syncOptionsModal');
@@ -3809,7 +3859,7 @@ function autoresChangePage(delta) {
     if (dateModal && e.target === dateModal) closeSyncByDateModal();
   });
 
-  // ── Sobrescribir handleSyncBtn para pedir contraseña al iniciar ───────
+  // ══ Sobrescribir handleSyncBtn para pedir contraseña al iniciar ═══════════
   const _origHandleSyncBtn = handleSyncBtn;
   handleSyncBtn = function() {
     const btn = document.getElementById('btnSync');
@@ -3820,6 +3870,7 @@ function autoresChangePage(delta) {
     }
   };
   </script>
+
 
 
   <script>
