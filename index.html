@@ -852,7 +852,7 @@
 <body class="bg-slate-50 min-h-screen">
   <!-- ══ LOADING SCREEN ══════════════════════════════════════════════ -->
   <div id="unas-loading-screen" role="status" aria-label="Cargando repositorio">
-    <img id="unas-loading-logo" src="https://raw.githubusercontent.com/Chasky-Soft-S-R-L/dspace-analitics/refs/heads/main/img/tigger_dspace.png" alt="Cargando..."/>
+    <img id="unas-loading-logo" src="https://raw.githubusercontent.com/Chasky-Soft-S-R-L/dspace-analitics/refs/heads/main/img/logo_tigger_unas.png" alt="Cargando..."/>
     <div id="unas-loading-title">Repositorio Institucional UNAS</div>
     <div id="unas-loading-subtitle">
       Cargando datos
@@ -3502,49 +3502,216 @@ function autoresChangePage(delta) {
           <i class="fa-solid fa-lock" style="color:#fff;font-size:1.3rem;"></i>
         </span>
       </div>
-      <h3 style="text-align:center;font-size:1rem;font-weight:700;color:#0f172a;margin-bottom:4px;">
-        Acceso restringido
-      </h3>
-      <p style="text-align:center;font-size:.8rem;color:#64748b;margin-bottom:20px;">
-        Ingresa la clave para sincronizar el repositorio
+      <h3 style="text-align:center;font-size:1.15rem;font-weight:700;
+        color:#0f172a;margin:0 0 4px;">Sincronización Segura</h3>
+      <p style="text-align:center;font-size:.85rem;color:#64748b;margin:0 0 20px;">
+        Ingresa la contraseña para continuar
       </p>
-      <div style="position:relative;margin-bottom:14px;">
-        <input id="syncPasswordInput" type="password"
-          placeholder="Clave de sincronización"
-          onkeydown="if(event.key==='Enter')confirmSyncPassword()"
-          style="width:100%;padding:10px 42px 10px 14px;border:1.5px solid #e2e8f0;
-            border-radius:10px;font-size:.88rem;color:#0f172a;outline:none;
-            transition:border-color .18s,box-shadow .18s;box-sizing:border-box;"
-          onfocus="this.style.borderColor='#22c55e';this.style.boxShadow='0 0 0 3px rgba(34,197,94,.15)'"
-          onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'" />
-        <button onclick="toggleSyncPwdVisibility()"
-          style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
-            background:none;border:none;cursor:pointer;color:#94a3b8;padding:2px;">
-          <i id="syncPwdEyeIcon" class="fa-solid fa-eye" style="font-size:.85rem;"></i>
+      <div style="position:relative;margin-bottom:16px;">
+        <input id="syncPwdInput" type="password" placeholder="Contraseña"
+          style="width:100%;box-sizing:border-box;padding:11px 44px 11px 14px;
+            border:1.5px solid #e2e8f0;border-radius:10px;font-size:.95rem;
+            outline:none;transition:border .2s;"
+          onfocus="this.style.borderColor='#22c55e'"
+          onblur="this.style.borderColor='#e2e8f0'"
+          onkeydown="if(event.key==='Enter')confirmSyncPassword()" />
+        <button onclick="toggleSyncPwdVisibility()" style="
+          position:absolute;right:12px;top:50%;transform:translateY(-50%);
+          background:none;border:none;cursor:pointer;color:#94a3b8;padding:0;">
+          <i id="syncPwdEyeIcon" class="fa-solid fa-eye" style="font-size:1rem;"></i>
         </button>
       </div>
-      <div id="syncPasswordError" style="
-        display:none;background:#fef2f2;border:1px solid #fecaca;
-        border-radius:8px;padding:8px 12px;margin-bottom:12px;
-        font-size:.78rem;color:#dc2626;font-weight:600;text-align:center;">
-        <i class="fa-solid fa-circle-exclamation" style="margin-right:5px;"></i>
-        Clave incorrecta. Intenta nuevamente.
+      <div id="syncPwdError" style="display:none;color:#ef4444;font-size:.82rem;
+        margin-bottom:12px;text-align:center;">
+        <i class="fa-solid fa-circle-exclamation"></i> Contraseña incorrecta
       </div>
-      <div style="display:flex;gap:10px;margin-top:4px;">
-        <button onclick="closeSyncPasswordModal()"
-          style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #e2e8f0;
-            background:#f8fafc;font-size:.85rem;font-weight:600;color:#64748b;
-            cursor:pointer;transition:background .15s;"
-          onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+      <div style="display:flex;gap:10px;">
+        <button onclick="closeSyncPasswordModal()" style="
+          flex:1;padding:11px;border-radius:10px;border:1.5px solid #e2e8f0;
+          background:#fff;color:#64748b;font-size:.92rem;font-weight:600;cursor:pointer;">
           Cancelar
         </button>
         <button onclick="confirmSyncPassword()"
-          style="flex:1;padding:10px;border-radius:10px;border:none;
+          style="flex:1;padding:11px;border-radius:10px;border:none;
             background:linear-gradient(135deg,#166534,#22c55e);
-            font-size:.85rem;font-weight:700;color:#fff;
-            cursor:pointer;transition:opacity .15s;box-shadow:0 2px 8px rgba(34,197,94,.3);"
-          onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-          <i class="fa-solid fa-rotate" style="margin-right:5px;"></i>Sincronizar
+            color:#fff;font-size:.92rem;font-weight:700;cursor:pointer;">
+          Continuar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal de opciones de Sincronización ───────────────────────────── -->
+  <div id="syncOptionsModal" style="
+    display:none;position:fixed;inset:0;z-index:9999;
+    background:rgba(15,23,42,.55);backdrop-filter:blur(4px);
+    align-items:center;justify-content:center;">
+    <div style="
+      background:#fff;border-radius:20px;padding:28px 24px 24px;
+      width:100%;max-width:440px;margin:16px;
+      box-shadow:0 24px 60px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);
+      animation:slideDown .28s cubic-bezier(.22,1,.36,1) both;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;
+            width:42px;height:42px;border-radius:12px;
+            background:linear-gradient(135deg,#166534,#22c55e);">
+            <i class="fa-solid fa-rotate" style="color:#fff;font-size:1.1rem;"></i>
+          </span>
+          <div>
+            <h3 style="margin:0;font-size:1.1rem;font-weight:700;color:#0f172a;">Opciones de Sincronización</h3>
+            <p style="margin:0;font-size:.8rem;color:#64748b;">Selecciona el tipo de sincronización</p>
+          </div>
+        </div>
+        <button onclick="closeSyncOptionsModal()" style="
+          background:none;border:none;cursor:pointer;color:#94a3b8;
+          width:32px;height:32px;border-radius:8px;font-size:1.1rem;
+          display:flex;align-items:center;justify-content:center;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+
+        <button onclick="executeSyncOption('all')" style="
+          display:flex;align-items:center;gap:10px;padding:14px 12px;
+          border-radius:12px;border:1.5px solid #dcfce7;background:#f0fdf4;
+          cursor:pointer;text-align:left;transition:all .2s;"
+          onmouseover="this.style.background='#dcfce7';this.style.borderColor='#22c55e'"
+          onmouseout="this.style.background='#f0fdf4';this.style.borderColor='#dcfce7'">
+          <span style="display:inline-flex;align-items:center;justify-content:center;
+            width:36px;height:36px;border-radius:10px;background:#22c55e;flex-shrink:0;">
+            <i class="fa-solid fa-database" style="color:#fff;font-size:.9rem;"></i>
+          </span>
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:#166534;">Sincronizar Todo</div>
+            <div style="font-size:.72rem;color:#4ade80;">Todos los registros</div>
+          </div>
+        </button>
+
+        <button onclick="executeSyncOption('new')" style="
+          display:flex;align-items:center;gap:10px;padding:14px 12px;
+          border-radius:12px;border:1.5px solid #dbeafe;background:#eff6ff;
+          cursor:pointer;text-align:left;transition:all .2s;"
+          onmouseover="this.style.background='#dbeafe';this.style.borderColor='#3b82f6'"
+          onmouseout="this.style.background='#eff6ff';this.style.borderColor='#dbeafe'">
+          <span style="display:inline-flex;align-items:center;justify-content:center;
+            width:36px;height:36px;border-radius:10px;background:#3b82f6;flex-shrink:0;">
+            <i class="fa-solid fa-plus-circle" style="color:#fff;font-size:.9rem;"></i>
+          </span>
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:#1d4ed8;">Registros Nuevos</div>
+            <div style="font-size:.72rem;color:#60a5fa;">Solo incorporaciones</div>
+          </div>
+        </button>
+
+        <button onclick="executeSyncOption('modified')" style="
+          display:flex;align-items:center;gap:10px;padding:14px 12px;
+          border-radius:12px;border:1.5px solid #fef9c3;background:#fefce8;
+          cursor:pointer;text-align:left;transition:all .2s;"
+          onmouseover="this.style.background='#fef9c3';this.style.borderColor='#eab308'"
+          onmouseout="this.style.background='#fefce8';this.style.borderColor='#fef9c3'">
+          <span style="display:inline-flex;align-items:center;justify-content:center;
+            width:36px;height:36px;border-radius:10px;background:#eab308;flex-shrink:0;">
+            <i class="fa-solid fa-pen-to-square" style="color:#fff;font-size:.9rem;"></i>
+          </span>
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:#a16207;">Registros Modificados</div>
+            <div style="font-size:.72rem;color:#facc15;">Cambios recientes</div>
+          </div>
+        </button>
+
+        <button onclick="executeSyncOption('deleted')" style="
+          display:flex;align-items:center;gap:10px;padding:14px 12px;
+          border-radius:12px;border:1.5px solid #fee2e2;background:#fff5f5;
+          cursor:pointer;text-align:left;transition:all .2s;"
+          onmouseover="this.style.background='#fee2e2';this.style.borderColor='#ef4444'"
+          onmouseout="this.style.background='#fff5f5';this.style.borderColor='#fee2e2'">
+          <span style="display:inline-flex;align-items:center;justify-content:center;
+            width:36px;height:36px;border-radius:10px;background:#ef4444;flex-shrink:0;">
+            <i class="fa-solid fa-trash-can" style="color:#fff;font-size:.9rem;"></i>
+          </span>
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:#b91c1c;">Registros Eliminados</div>
+            <div style="font-size:.72rem;color:#f87171;">Limpiar bajas</div>
+          </div>
+        </button>
+
+        <button onclick="openSyncByDateModal()" style="
+          display:flex;align-items:center;gap:10px;padding:14px 12px;
+          border-radius:12px;border:1.5px solid #ede9fe;background:#faf5ff;
+          cursor:pointer;text-align:left;transition:all .2s;"
+          onmouseover="this.style.background='#ede9fe';this.style.borderColor='#8b5cf6'"
+          onmouseout="this.style.background='#faf5ff';this.style.borderColor='#ede9fe'">
+          <span style="display:inline-flex;align-items:center;justify-content:center;
+            width:36px;height:36px;border-radius:10px;background:#8b5cf6;flex-shrink:0;">
+            <i class="fa-solid fa-calendar-days" style="color:#fff;font-size:.9rem;"></i>
+          </span>
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:#6d28d9;">Sincronizar por Fecha</div>
+            <div style="font-size:.72rem;color:#a78bfa;">Rango personalizado</div>
+          </div>
+        </button>
+
+        <button onclick="executeSyncOption('export')" style="
+          display:flex;align-items:center;gap:10px;padding:14px 12px;
+          border-radius:12px;border:1.5px solid #ccfbf1;background:#f0fdfa;
+          cursor:pointer;text-align:left;transition:all .2s;"
+          onmouseover="this.style.background='#ccfbf1';this.style.borderColor='#14b8a6'"
+          onmouseout="this.style.background='#f0fdfa';this.style.borderColor='#ccfbf1'">
+          <span style="display:inline-flex;align-items:center;justify-content:center;
+            width:36px;height:36px;border-radius:10px;background:#14b8a6;flex-shrink:0;">
+            <i class="fa-solid fa-file-export" style="color:#fff;font-size:.9rem;"></i>
+          </span>
+          <div>
+            <div style="font-size:.85rem;font-weight:700;color:#0f766e;">Exportar y Sincronizar</div>
+            <div style="font-size:.72rem;color:#2dd4bf;">Exportar + sincronizar</div>
+          </div>
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal selector de fecha ────────────────────────────────────────── -->
+  <div id="syncByDateModal" style="
+    display:none;position:fixed;inset:0;z-index:10000;
+    background:rgba(15,23,42,.65);backdrop-filter:blur(4px);
+    align-items:center;justify-content:center;">
+    <div style="
+      background:#fff;border-radius:18px;padding:28px 24px 22px;
+      width:100%;max-width:360px;margin:16px;
+      box-shadow:0 24px 60px rgba(0,0,0,.2);
+      animation:slideDown .28s cubic-bezier(.22,1,.36,1) both;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;
+          width:40px;height:40px;border-radius:11px;background:#8b5cf6;">
+          <i class="fa-solid fa-calendar-days" style="color:#fff;font-size:1rem;"></i>
+        </span>
+        <div>
+          <h3 style="margin:0;font-size:1rem;font-weight:700;color:#0f172a;">Sincronizar por Fecha</h3>
+          <p style="margin:0;font-size:.78rem;color:#64748b;">Selecciona la fecha de inicio</p>
+        </div>
+      </div>
+      <label style="display:block;font-size:.83rem;font-weight:600;color:#374151;margin-bottom:6px;">
+        Desde la fecha:
+      </label>
+      <input id="syncFromDate" type="date"
+        style="width:100%;box-sizing:border-box;padding:10px 12px;
+          border:1.5px solid #e2e8f0;border-radius:10px;font-size:.93rem;
+          outline:none;margin-bottom:18px;"
+        onfocus="this.style.borderColor='#8b5cf6'"
+        onblur="this.style.borderColor='#e2e8f0'" />
+      <div style="display:flex;gap:10px;">
+        <button onclick="closeSyncByDateModal()" style="
+          flex:1;padding:10px;border-radius:10px;border:1.5px solid #e2e8f0;
+          background:#fff;color:#64748b;font-size:.9rem;font-weight:600;cursor:pointer;">
+          Cancelar
+        </button>
+        <button onclick="confirmSyncByDate()" style="
+          flex:1;padding:10px;border-radius:10px;border:none;
+          background:linear-gradient(135deg,#6d28d9,#8b5cf6);
+          color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;">
+          Sincronizar
         </button>
       </div>
     </div>
@@ -3552,67 +3719,104 @@ function autoresChangePage(delta) {
 
   <script>
   // ── Contraseña modal para Sincronizar ──────────────────────────────────
-  const SYNC_PASSWORD = 'repository$2026$';
-
   function openSyncPasswordModal() {
-    const modal = document.getElementById('syncPasswordModal');
-    const input = document.getElementById('syncPasswordInput');
-    const err   = document.getElementById('syncPasswordError');
-    modal.style.display = 'flex';
-    input.value = '';
-    err.style.display = 'none';
-    setTimeout(() => input.focus(), 80);
+    const m = document.getElementById('syncPasswordModal');
+    m.style.display = 'flex';
+    document.getElementById('syncPwdInput').value = '';
+    document.getElementById('syncPwdError').style.display = 'none';
+    setTimeout(() => document.getElementById('syncPwdInput').focus(), 80);
   }
-
   function closeSyncPasswordModal() {
     document.getElementById('syncPasswordModal').style.display = 'none';
   }
-
   function toggleSyncPwdVisibility() {
-    const input = document.getElementById('syncPasswordInput');
-    const icon  = document.getElementById('syncPwdEyeIcon');
-    if (input.type === 'password') {
-      input.type = 'text';
+    const inp  = document.getElementById('syncPwdInput');
+    const icon = document.getElementById('syncPwdEyeIcon');
+    if (inp.type === 'password') {
+      inp.type = 'text';
       icon.className = 'fa-solid fa-eye-slash';
     } else {
-      input.type = 'password';
+      inp.type = 'password';
       icon.className = 'fa-solid fa-eye';
     }
   }
-
   function confirmSyncPassword() {
-    const input = document.getElementById('syncPasswordInput');
-    const err   = document.getElementById('syncPasswordError');
-    if (input.value === SYNC_PASSWORD) {
+    const val = document.getElementById('syncPwdInput').value;
+    if (val === 'repository$2026$') {
       closeSyncPasswordModal();
-      startSync();
+      openSyncOptionsModal();
     } else {
+      const err = document.getElementById('syncPwdError');
       err.style.display = 'block';
-      input.value = '';
-      input.style.borderColor = '#fca5a5';
-      input.style.boxShadow = '0 0 0 3px rgba(239,68,68,.15)';
-      setTimeout(() => {
-        input.style.borderColor = '#e2e8f0';
-        input.style.boxShadow = 'none';
-      }, 1200);
-      input.focus();
+      const inp = document.getElementById('syncPwdInput');
+      inp.style.borderColor = '#ef4444';
+      setTimeout(() => { inp.style.borderColor = '#e2e8f0'; }, 1500);
     }
   }
 
-  // Cerrar modal al hacer clic fuera
-  document.getElementById('syncPasswordModal').addEventListener('click', function(e) {
-    if (e.target === this) closeSyncPasswordModal();
+  // ── Modal de opciones de sincronización ───────────────────────────────
+  function openSyncOptionsModal() {
+    document.getElementById('syncOptionsModal').style.display = 'flex';
+  }
+  function closeSyncOptionsModal() {
+    document.getElementById('syncOptionsModal').style.display = 'none';
+  }
+
+  // ── Modal selector de fecha ────────────────────────────────────────────
+  function openSyncByDateModal() {
+    closeSyncOptionsModal();
+    const m = document.getElementById('syncByDateModal');
+    m.style.display = 'flex';
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('syncFromDate').value = today;
+  }
+  function closeSyncByDateModal() {
+    document.getElementById('syncByDateModal').style.display = 'none';
+  }
+  function confirmSyncByDate() {
+    const date = document.getElementById('syncFromDate').value;
+    if (!date) { alert('Por favor selecciona una fecha.'); return; }
+    closeSyncByDateModal();
+    startSync({ mode: 'date', fromDate: date });
+  }
+
+  // ── Ejecutar opción de sincronización ─────────────────────────────────
+  function executeSyncOption(mode) {
+    closeSyncOptionsModal();
+    if (typeof startSync === 'function') {
+      startSync({ mode: mode });
+    } else {
+      const labels = {
+        all:      'Sincronizando todos los registros…',
+        new:      'Sincronizando registros nuevos…',
+        modified: 'Sincronizando registros modificados…',
+        deleted:  'Sincronizando registros eliminados…',
+        export:   'Exportando y sincronizando…'
+      };
+      const msg = labels[mode] || 'Sincronizando…';
+      if (typeof showToast === 'function') showToast(msg, 'info');
+      else alert(msg);
+    }
+  }
+
+  // ── Cerrar modales al hacer clic fuera ────────────────────────────────
+  document.addEventListener('click', function(e) {
+    const pwdModal  = document.getElementById('syncPasswordModal');
+    const optsModal = document.getElementById('syncOptionsModal');
+    const dateModal = document.getElementById('syncByDateModal');
+    if (pwdModal  && e.target === pwdModal)  closeSyncPasswordModal();
+    if (optsModal && e.target === optsModal) closeSyncOptionsModal();
+    if (dateModal && e.target === dateModal) closeSyncByDateModal();
   });
 
   // ── Sobrescribir handleSyncBtn para pedir contraseña al iniciar ───────
   const _origHandleSyncBtn = handleSyncBtn;
   handleSyncBtn = function() {
-    if (syncStatus === 'syncing') {
-      stopSync();              // Pausar no requiere contraseña
-    } else if (syncStatus === 'paused') {
-      startSync();             // Continuar tampoco requiere contraseña
+    const btn = document.getElementById('btnSync');
+    if (btn && (btn.dataset.state === 'syncing' || btn.dataset.state === 'paused')) {
+      _origHandleSyncBtn();
     } else {
-      openSyncPasswordModal(); // Iniciar sí requiere contraseña
+      openSyncPasswordModal();
     }
   };
   </script>
