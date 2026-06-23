@@ -117,17 +117,12 @@ function getMetaFirst(metaObj, ...keys) {
 }
 
 // ─── Comunidad/colección con caché ────────────────────────────────────────
-// Usa un mapa de promesas para evitar fetches duplicados simultáneos
 const collectionInflight = new Map();
 
 async function fetchCommunityCollection(owningCollectionHref) {
   if (!owningCollectionHref) return { collection: '', community: '' };
   if (collectionCache.has(owningCollectionHref)) return collectionCache.get(owningCollectionHref);
-
-  // Si ya hay un fetch en vuelo para esta URL, reusar la misma promesa
-  if (collectionInflight.has(owningCollectionHref)) {
-    return collectionInflight.get(owningCollectionHref);
-  }
+  if (collectionInflight.has(owningCollectionHref)) return collectionInflight.get(owningCollectionHref);
 
   const promise = (async () => {
     try {
@@ -151,10 +146,8 @@ async function fetchCommunityCollection(owningCollectionHref) {
 }
 
 // ─── Obtener URL del PDF principal ────────────────────────────────────────
-// Optimizado: usa embed para traer bundles+bitstreams en un solo request
 async function fetchPdfUrl(uuid) {
   try {
-    // Intentar con embed (1 sola llamada en lugar de 3)
     const r = await fetchWithRetry(
       `${ITEMS_URL}/${uuid}/bundles?size=10&embed=bitstreams`,
       { timeout: 12000 }
@@ -164,10 +157,8 @@ async function fetchPdfUrl(uuid) {
     const original = bundles.find(b => b.name === 'ORIGINAL');
     if (!original) return null;
 
-    // Intentar bitstreams embebidos primero (evita 2da llamada)
     let bitstreams = original?._embedded?.bitstreams?._embedded?.bitstreams || [];
 
-    // Fallback: si no vienen embebidos, hacer 2da llamada
     if (!bitstreams.length) {
       const bsHref = original?._links?.bitstreams?.href;
       if (!bsHref) return null;
@@ -189,20 +180,15 @@ async function fetchPdfUrl(uuid) {
 }
 
 // ─── Mapeo principal de un objeto DSpace ──────────────────────────────────
-// Optimizado: lanza fetchCommunityCollection y fetchPdfUrl en paralelo
-// y evita el fetch extra de título cuando ya viene en metadata
 async function mapRecord(dspaceItem) {
   let meta     = dspaceItem.metadata || {};
   const uuid   = dspaceItem.uuid || dspaceItem.id || '';
   const handle = dspaceItem.handle || '';
 
-  // Solo hace fetch extra si el título realmente falta
   let titleRaw = getMetaFirst(meta, 'dc.title');
   const needsExtraFetch = !titleRaw && !!uuid;
-
   const colHref = dspaceItem._links?.owningCollection?.href;
 
-  // Lanzar los 3 fetch en paralelo (colección, PDF, y si necesario: item completo)
   const [ccResult, pdfData, extraMeta] = await Promise.all([
     colHref ? fetchCommunityCollection(colHref) : Promise.resolve({ collection: '', community: '' }),
     uuid    ? fetchPdfUrl(uuid).catch(() => null) : Promise.resolve(null),
@@ -259,7 +245,6 @@ function getTotalPages(data) {
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ─── Pool de concurrencia genérico ────────────────────────────────────────
-// Ejecuta `tasks` (array de funciones async) con máximo `limit` en paralelo
 async function pLimit(tasks, limit) {
   const results = new Array(tasks.length);
   let idx = 0;
@@ -286,13 +271,22 @@ app.get('/metadata', (_req, res) => res.json(readJSON(META_PATH, {})));
 app.get('/data', (req, res) => {
   const repo   = getRepo();
   const fields = req.query.fields ? req.query.fields.split(',').map(f => f.trim()) : null;
-  if (fields && fields.length > 0)
-    return res.json(repo.map(r => {
+
+  let payload;
+  if (fields && fields.length > 0) {
+    payload = JSON.stringify(repo.map(r => {
       const o = {};
       fields.forEach(f => { if (r[f] !== undefined) o[f] = r[f]; });
       return o;
     }));
-  res.json(repo);
+  } else {
+    payload = JSON.stringify(repo);
+  }
+
+  // Enviar Content-Length para que el cliente pueda mostrar progreso real de descarga
+  res.setHeader('Content-Type',   'application/json; charset=utf-8');
+  res.setHeader('Content-Length', Buffer.byteLength(payload, 'utf8'));
+  res.end(payload);
 });
 
 // ─── GET /thumb/:uuid ──────────────────────────────────────────────────────
@@ -330,24 +324,31 @@ app.post('/sync/stop', (_req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ─── POST /sync/start  (SSE streaming — algoritmo optimizado)  ────────────
+// ─── POST /sync/start  (SSE streaming — algoritmo optimizado v3)  ─────────
 //
-//  Mejoras de velocidad aplicadas:
-//  1. Keep-Alive HTTP agents (reutiliza conexiones TCP, elimina handshake por req)
-//  2. PAGES_CONCURRENCY = 8 (8 páginas DSpace descargadas simultáneamente)
-//  3. ITEMS_CONCURRENCY = 30 (30 items mapeados en paralelo con pLimit)
-//  4. fetchPdfUrl usa embed para reducir 3 llamadas → 1
-//  5. mapRecord lanza colección + PDF + extra-fetch en paralelo (Promise.all)
-//  6. collectionCache con inflight dedup (evita fetches duplicados simultáneos)
-//  7. writeJSON sin indent (más rápido en disco)
-//  8. Pipeline solapado: mientras se procesan items de página N,
-//     se descargan páginas N+1..N+PAGES_CONCURRENCY
-//  9. shouldProcess early-exit para modo 'new' (evita mapRecord innecesario)
+//  OPTIMIZACIONES MODO 'new' y 'date':
+//  ─────────────────────────────────────────────────────────────────────────
+//  MODO 'new':
+//    • Ordena por dc.date.accessioned DESC → los items más recientes primero
+//    • Para en cuanto encuentra STOP_AFTER_CONSECUTIVE_KNOWN UUIDs seguidos
+//      ya presentes en repoMap (early-exit real, no recorre todo el repositorio)
+//
+//  MODO 'date':
+//    • Usa filtro nativo de DSpace: f.dateIssued=[FROM_TO] en la URL
+//    • DSpace devuelve SOLO los items del rango → 0 páginas innecesarias
+//    • Ordena por dc.date.issued DESC para procesar los más recientes primero
+//
+//  MODO 'all':
+//    • Sin cambios — pipeline solapado completo como antes
 // ═══════════════════════════════════════════════════════════════════════════
+
+// Cuántos UUIDs conocidos consecutivos detienen el modo 'new'
+const STOP_AFTER_CONSECUTIVE_KNOWN = 3;
+
 app.post('/sync/start', async (req, res) => {
   const mode     = req.body?.mode     || 'all';
-  const fromDate = req.body?.fromDate || null;
-  const toDate   = req.body?.toDate   || null;
+  const fromDate = req.body?.fromDate || null;  // 'YYYY-MM-DD'
+  const toDate   = req.body?.toDate   || null;  // 'YYYY-MM-DD'
 
   res.setHeader('Content-Type',  'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -383,14 +384,39 @@ app.post('/sync/start', async (req, res) => {
   // ── Etiqueta de inicio ─────────────────────────────────────────────────
   const startLabels = {
     all:  isPaused ? 'Reanudando sincronización completa…' : 'Iniciando sincronización completa (modo turbo)…',
-    new:  'Buscando registros nuevos en DSpace…',
-    date: `Sincronizando registros desde ${fromDate}${toDate ? ' hasta ' + toDate : ''}…`,
+    new:  'Buscando registros nuevos (orden: más reciente primero, early-exit)…',
+    date: `Sincronizando por rango de fechas ${fromDate}${toDate ? ' → ' + toDate : ''} (filtro DSpace nativo)…`,
   };
   send({ type: 'start', message: startLabels[mode] || 'Iniciando sincronización…' });
 
-  // ── Helper: fetch de una página DSpace con reintentos ─────────────────
+  // ══════════════════════════════════════════════════════════════════════
+  //  CONSTRUCTOR DE URL DE BÚSQUEDA según modo
+  // ══════════════════════════════════════════════════════════════════════
+  function buildSearchUrl(page) {
+    const base = `${SEARCH_URL}?scope=&query=&page=${page}&size=${PAGE_SIZE}`;
+
+    if (mode === 'new') {
+      // Más recientes primero → early-exit en cuanto aparezcan UUIDs conocidos
+      return `${base}&sort=dc.date.accessioned%2CDESC`;
+    }
+
+    if (mode === 'date' && fromDate) {
+      // ── Filtro nativo DSpace 7: f.dateIssued ──────────────────────────
+      // Formato: [YYYY-MM-DD TO YYYY-MM-DD]  (corchetes = rango inclusivo)
+      // DSpace acepta también [YYYY-01-01 TO 2099-12-31] para "desde"
+      const from = fromDate;
+      const to   = toDate || '2099-12-31';
+      const filterVal = encodeURIComponent(`[${from} TO ${to}]`);
+      return `${base}&f.dateIssued=${filterVal},equals&sort=dc.date.issued%2CDESC`;
+    }
+
+    // Modo 'all' — orden por score como antes
+    return `${base}&sort=score%2CDESC`;
+  }
+
+  // ── Helper: fetch de una página DSpace ────────────────────────────────
   async function fetchPage(p) {
-    const url = `${SEARCH_URL}?scope=&query=&page=${p}&size=${PAGE_SIZE}&sort=score%2CDESC`;
+    const url = buildSearchUrl(p);
     try {
       const r = await fetchWithRetry(url);
       return await r.json();
@@ -400,25 +426,10 @@ app.post('/sync/start', async (req, res) => {
     }
   }
 
-  // ── Helper: filtrar items según modo ──────────────────────────────────
-  function shouldProcess(item) {
-    if (mode === 'new')  return !repoMap.has(item.uuid);
-    if (mode === 'date' && fromDate) {
-      const m2  = item.metadata || {};
-      const val = (m2['dc.date.issued']?.[0]?.value ||
-                   m2['dc.date.available']?.[0]?.value ||
-                   m2['dc.date.accessioned']?.[0]?.value || '').slice(0, 10);
-      if (!val) return false;
-      return val >= fromDate && (toDate ? val <= toDate : true);
-    }
-    return true;
-  }
-
   // ── Helper: guardar estado y notificar progreso ────────────────────────
   let lastSaveTs = 0;
   function saveAndNotify(p, totalPages, totalElements, force = false) {
     const now = Date.now();
-    // Guardar en disco máximo cada 3 s para no saturar I/O (excepto force)
     if (force || now - lastSaveTs > 3000) {
       repo = Array.from(repoMap.values());
       meta.syncState.currentPage = p + 1;
@@ -439,12 +450,11 @@ app.post('/sync/start', async (req, res) => {
     });
   }
 
-  // ── Núcleo: procesar un array de items con pLimit ─────────────────────
+  // ── Núcleo: procesar un array de items (modo 'all' y 'date') ──────────
   async function processItems(items) {
-    const filtered = items.filter(item => item?.uuid && shouldProcess(item));
-    if (!filtered.length) return;
+    if (!items.length) return;
 
-    const tasks = filtered.map(item => async () => {
+    const tasks = items.map(item => async () => {
       if (syncAbortFlag) return null;
       return mapRecord(item).catch(() => null);
     });
@@ -458,42 +468,78 @@ app.post('/sync/start', async (req, res) => {
     }
   }
 
-  try {
-    // ── 1. Obtener primera página para conocer el total ────────────────
-    const firstData = await fetchPage(startPage);
-    if (!firstData) throw new Error('No se pudo conectar con DSpace. Verifica la red.');
+  // ══════════════════════════════════════════════════════════════════════
+  //  MODO 'new' — Early-exit: procesa página a página en orden DESC,
+  //  para en cuanto encuentra STOP_AFTER_CONSECUTIVE_KNOWN UUIDs conocidos
+  //  consecutivos (señal de que ya alcanzamos el límite de lo nuevo).
+  // ══════════════════════════════════════════════════════════════════════
+  async function runNewMode(firstData, totalPages, totalElements) {
+    let consecutiveKnown = 0;
+    let earlyExit        = false;
 
-    const { totalPages, totalElements } = getTotalPages(firstData);
-    meta.syncState.totalPages = totalPages;
-    writeJSON(META_PATH, meta);
+    async function processPageNew(items) {
+      for (const item of items) {
+        if (syncAbortFlag || earlyExit) break;
+        if (!item?.uuid) continue;
 
-    send({ type: 'info', message: `DSpace: ${totalElements.toLocaleString()} registros · ${totalPages} páginas · concurrencia ${PAGES_CONCURRENCY}×páginas / ${ITEMS_CONCURRENCY}×items` });
+        meta.syncState.processed++;
 
-    // Procesar primera página
+        if (repoMap.has(item.uuid)) {
+          consecutiveKnown++;
+          if (consecutiveKnown >= STOP_AFTER_CONSECUTIVE_KNOWN) {
+            earlyExit = true;
+            break;
+          }
+          continue; // ya lo tenemos, no mapear
+        }
+
+        // UUID nuevo → mapear y guardar
+        consecutiveKnown = 0;
+        const record = await mapRecord(item).catch(() => null);
+        if (record?.uuid) {
+          repoMap.set(record.uuid, record);
+          newCount++;
+        }
+      }
+    }
+
+    // Primera página
+    await processPageNew(extractItemsFromSearch(firstData));
+    saveAndNotify(0, totalPages, totalElements);
+
+    // Páginas siguientes (secuencial para respetar el early-exit)
+    for (let p = 1; p < totalPages && !earlyExit && !syncAbortFlag; p++) {
+      const data = await fetchPage(p);
+      if (!data) continue;
+      const items = extractItemsFromSearch(data);
+      await processPageNew(items);
+      saveAndNotify(p, totalPages, totalElements);
+    }
+
+    return earlyExit;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  MODO 'date' — DSpace ya filtra por fecha en la query.
+  //  Solo procesamos las páginas que devuelve DSpace (pueden ser pocas).
+  //  Pipeline solapado igual que 'all' para máxima velocidad.
+  // ══════════════════════════════════════════════════════════════════════
+  async function runDateMode(firstData, totalPages, totalElements) {
+    // Primera página
     const firstItems = extractItemsFromSearch(firstData);
     meta.syncState.processed += firstItems.length;
     await processItems(firstItems);
-    saveAndNotify(startPage, totalPages, totalElements);
+    saveAndNotify(0, totalPages, totalElements);
 
-    if (syncAbortFlag) {
-      meta.syncState.status = 'paused';
-      writeJSON(META_PATH, meta);
-      send({ type: 'paused', processed: meta.syncState.processed, message: 'Sincronización pausada.' });
-      res.end(); return;
-    }
-
-    // ── 2. Pipeline solapado: descargar PAGES_CONCURRENCY páginas a la vez
-    //       y procesar sus items en paralelo con pLimit ──────────────────
-    for (let p = startPage + 1; p < totalPages; p += PAGES_CONCURRENCY) {
+    // Resto — pipeline solapado
+    for (let p = 1; p < totalPages; p += PAGES_CONCURRENCY) {
       if (syncAbortFlag) break;
 
       const pageNums = [];
       for (let k = p; k < Math.min(p + PAGES_CONCURRENCY, totalPages); k++) pageNums.push(k);
 
-      // Descargar todas las páginas del bloque simultáneamente
       const pageDatas = await Promise.all(pageNums.map(n => fetchPage(n)));
 
-      // Extraer todos los items del bloque
       const allItems = [];
       for (const pageData of pageDatas) {
         if (!pageData) continue;
@@ -502,19 +548,73 @@ app.post('/sync/start', async (req, res) => {
         allItems.push(...items);
       }
 
-      // Mapear TODOS los items del bloque en paralelo (pLimit global)
       await processItems(allItems);
-
-      // Notificar al final del bloque (última página del bloque)
       saveAndNotify(pageNums[pageNums.length - 1], totalPages, totalElements);
     }
+  }
 
+  try {
+    // ── 1. Obtener primera página ──────────────────────────────────────
+    const firstData = await fetchPage(startPage);
+    if (!firstData) throw new Error('No se pudo conectar con DSpace. Verifica la red.');
+
+    const { totalPages, totalElements } = getTotalPages(firstData);
+    meta.syncState.totalPages = totalPages;
+    writeJSON(META_PATH, meta);
+
+    send({
+      type: 'info',
+      message: `DSpace: ${totalElements.toLocaleString()} registros · ${totalPages} páginas`
+        + (mode === 'date' ? ' (filtrado por DSpace — solo el rango solicitado)' : '')
+        + (mode === 'new'  ? ' (orden: más reciente primero · early-exit activado)' : ''),
+    });
+
+    // ── 2. Ejecutar según modo ─────────────────────────────────────────
+    let earlyExitTriggered = false;
+
+    if (mode === 'new') {
+      earlyExitTriggered = await runNewMode(firstData, totalPages, totalElements);
+
+    } else if (mode === 'date') {
+      await runDateMode(firstData, totalPages, totalElements);
+
+    } else {
+      // ── Modo 'all' — pipeline solapado completo ──────────────────────
+      const firstItems = extractItemsFromSearch(firstData);
+      meta.syncState.processed += firstItems.length;
+      await processItems(firstItems);
+      saveAndNotify(startPage, totalPages, totalElements);
+
+      if (!syncAbortFlag) {
+        for (let p = startPage + 1; p < totalPages; p += PAGES_CONCURRENCY) {
+          if (syncAbortFlag) break;
+
+          const pageNums = [];
+          for (let k = p; k < Math.min(p + PAGES_CONCURRENCY, totalPages); k++) pageNums.push(k);
+
+          const pageDatas = await Promise.all(pageNums.map(n => fetchPage(n)));
+
+          const allItems = [];
+          for (const pageData of pageDatas) {
+            if (!pageData) continue;
+            const items = extractItemsFromSearch(pageData);
+            meta.syncState.processed += items.length;
+            allItems.push(...items);
+          }
+
+          await processItems(allItems);
+          saveAndNotify(pageNums[pageNums.length - 1], totalPages, totalElements);
+        }
+      }
+    }
+
+    // ── 3. Finalizar ──────────────────────────────────────────────────
     if (syncAbortFlag) {
       meta.syncState.status = 'paused';
       writeJSON(META_PATH, meta);
       send({ type: 'paused', processed: meta.syncState.processed, message: 'Sincronización pausada por el usuario.' });
+
     } else {
-      // ── 3. Finalizar ──────────────────────────────────────────────────
       meta.syncState.status = 'idle';
       meta.syncState.currentPage = totalPages;
       const now = new Date().toISOString();
@@ -538,9 +638,13 @@ app.post('/sync/start', async (req, res) => {
       setRepo(Array.from(repoMap.values()));
       writeJSON(META_PATH, meta);
 
+      const earlyNote = earlyExitTriggered
+        ? ` (early-exit: ${STOP_AFTER_CONSECUTIVE_KNOWN} UUIDs conocidos consecutivos)`
+        : '';
+
       const doneLabels = {
         all:  `✅ Sincronización completa · ${Array.from(repoMap.values()).length.toLocaleString()} registros · ${newCount} nuevos · ${updCount} actualizados`,
-        new:  `✅ Registros nuevos: ${newCount} · Total: ${Array.from(repoMap.values()).length.toLocaleString()}`,
+        new:  `✅ Registros nuevos: ${newCount} · Total: ${Array.from(repoMap.values()).length.toLocaleString()}${earlyNote}`,
         date: `✅ Por fecha · ${(newCount + updCount)} procesados (${fromDate}${toDate ? ' → ' + toDate : ''})`,
       };
       send({ type: 'done', total: Array.from(repoMap.values()).length, newCount, updCount,
