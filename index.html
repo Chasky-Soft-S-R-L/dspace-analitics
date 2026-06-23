@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <!-- Parser JSON de streaming (SAX-style) -->
+  <script src="https://unpkg.com/clarinet@0.12.4/clarinet.js"></script>
   <style>
     /* ═══════════════════════════════════════════════════════════════
        REPOSITORIO UNAS — Modern UI System v2.0
@@ -1737,48 +1739,117 @@ async function loadData() {
   }
 }
 
-// ── Descarga /data con progreso real de bytes ────────────────────────────────
-// Usa ReadableStream para actualizar la barra conforme llegan los chunks.
-// Si Content-Length no está disponible, estima el progreso por velocidad.
+// ── Parser JSON incremental por streaming con clarinet ───────────────────────
+//
+//  Estrategia:
+//  ─ Lee el body chunk a chunk (ReadableStream + TextDecoder)
+//  ─ Alimenta cada fragmento de texto al parser SAX de clarinet
+//  ─ clarinet emite eventos onopenobject/onkey/onvalue/oncloseobject
+//    → construimos cada objeto campo a campo, sin tener el JSON completo en RAM
+//  ─ Solo el objeto actual (~2 KB) + el chunk activo están en memoria a la vez
+//
+//  Resultado: memoria máxima ≈ tamaño de 1 objeto + chunk activo
+//  en lugar de los ~935 KB del JSON completo.
+//
 async function _streamJsonWithProgress(response, fromPct, toPct) {
   const contentLength = parseInt(response.headers.get('Content-Length') || '0', 10);
-  const reader = response.body.getReader();
-  const chunks = [];
-  let received = 0;
+  const reader  = response.body.getReader();
+  const decoder = new TextDecoder('utf-8', { fatal: false });
 
+  const records = [];   // array final — se llena registro a registro
+  let received  = 0;    // bytes recibidos (para la barra de progreso)
+
+  // ── Configurar el parser SAX de clarinet ────────────────────────────
+  const parser = clarinet.parser();
+
+  let currentObj = null;  // objeto que se está construyendo
+  let currentKey = null;  // última clave recibida
+  let objDepth   = 0;     // profundidad de objetos (1 = registro de nivel superior)
+
+  // Abre un objeto JSON
+  parser.onopenobject = function (key) {
+    objDepth++;
+    if (objDepth === 1) {
+      // Nuevo registro de nivel superior
+      currentObj = {};
+      currentKey = (key !== undefined && key !== null) ? key : null;
+    } else if (objDepth === 2 && currentKey !== null && currentObj !== null) {
+      // Sub-objeto: inicializar como objeto vacío en el campo padre
+      currentObj[currentKey] = {};
+    }
+  };
+
+  // Cierra un objeto JSON
+  parser.oncloseobject = function () {
+    if (objDepth === 1 && currentObj !== null) {
+      // Registro de nivel superior completo → agregar al array
+      records.push(currentObj);
+      currentObj = null;
+      currentKey = null;
+    }
+    objDepth--;
+  };
+
+  // Recibe una clave del objeto actual
+  parser.onkey = function (key) {
+    currentKey = key;
+  };
+
+  // Recibe un valor (string, número, booleano, null)
+  parser.onvalue = function (value) {
+    if (objDepth === 1 && currentKey !== null && currentObj !== null) {
+      currentObj[currentKey] = value;
+    }
+  };
+
+  // Error del parser: loguear y continuar
+  parser.onerror = function (err) {
+    console.warn('[clarinet] error de parsing:', err.message);
+    parser.resume();
+  };
+
+  // ── Loop de lectura de chunks ────────────────────────────────────────
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    chunks.push(value);
-    received += value.length;
 
-    // Calcular porcentaje dentro del rango [fromPct, toPct]
+    received += value.length;
+    // Decodificar chunk de bytes a texto y alimentar a clarinet
+    const text = decoder.decode(value, { stream: true });
+    parser.write(text);
+
+    // Calcular progreso en el rango [fromPct, toPct]
     let pct;
     if (contentLength > 0) {
       pct = fromPct + ((received / contentLength) * (toPct - fromPct));
     } else {
-      // Sin Content-Length: progreso logarítmico basado en MB recibidos
       const mb = received / (1024 * 1024);
-      const estimated = Math.min(mb / (mb + 2), 0.97); // asíntota suave
-      pct = fromPct + (estimated * (toPct - fromPct));
+      pct = fromPct + (Math.min(mb / (mb + 2), 0.97) * (toPct - fromPct));
     }
 
-    const label = contentLength > 0
-      ? 'Descargando… ' + (received / 1024).toFixed(0) + ' KB de ' + (contentLength / 1024).toFixed(0) + ' KB'
-      : 'Descargando… ' + (received / 1024).toFixed(0) + ' KB';
+    const recvKB  = (received  / 1024).toFixed(0);
+    const totalKB = contentLength > 0
+      ? ' de ' + (contentLength / 1024).toFixed(0) + ' KB'
+      : ' KB';
+    const label = 'Descargando\u2026 ' + recvKB + totalKB
+                + ' \u00b7 ' + records.length.toLocaleString('es-PE') + ' registros';
 
-    if (window._loadingProgress) window._loadingProgress(Math.min(pct, toPct - 0.5), label);
+    if (window._loadingProgress)
+      window._loadingProgress(Math.min(pct, toPct - 0.5), label);
   }
 
-  // Ensamblar todos los chunks en un único ArrayBuffer y parsear JSON
-  const total = chunks.reduce((sum, c) => sum + c.length, 0);
-  const merged = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.length; }
+  // Vaciar decoder y cerrar el parser
+  const remaining = decoder.decode();
+  if (remaining) parser.write(remaining);
+  parser.close();
 
-  if (window._loadingProgress) window._loadingProgress(toPct, 'Descarga completa, procesando…');
-  return JSON.parse(new TextDecoder().decode(merged));
+  if (window._loadingProgress)
+    window._loadingProgress(toPct,
+      'Descarga completa \u00b7 ' + records.length.toLocaleString('es-PE') + ' registros');
+
+  return records;
 }
+
 
 // ── Espera dos frames de animación + un tick extra ────────────────────────────
 // Asegura que el navegador haya pintado el contenido antes de cerrar el splash.
