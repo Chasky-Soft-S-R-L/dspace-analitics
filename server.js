@@ -60,12 +60,23 @@ const TYPE_MAP = {
   'info:eu-repo/semantics/bookPart':         'Capítulo de Libro',
   'info:eu-repo/semantics/workingPaper':     'Documento de Trabajo',
   'info:eu-repo/semantics/other':            'Otro',
+  'Technical Documentation':                 'Documentos Técnicos',
+};
+// Vocabulario COAR Resource Types (http://purl.org/coar/resource_type/c_xxxx)
+const COAR_TYPE_MAP = {
+  'c_7a1f': 'Tesis de Pregrado',   // Bachelor thesis (Bachiller, Título Profesional, Segunda Especialidad)
+  'c_bdcc': 'Tesis de Maestría',   // Master thesis
+  'c_db06': 'Tesis Doctoral',      // Doctoral thesis
+  'c_46ec': 'Tesis',               // Thesis (grado no especificado)
+  'c_71bd': 'Documentos Técnicos', // Technical documentation
 };
 function normalizeType(raw) {
   if (!raw) return '';
   if (TYPE_MAP[raw]) return TYPE_MAP[raw];
   const parts = raw.split('/');
   const last  = parts[parts.length - 1] || raw;
+  const coar  = COAR_TYPE_MAP[last.toLowerCase()];
+  if (coar) return coar;
   return last.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
 }
 
